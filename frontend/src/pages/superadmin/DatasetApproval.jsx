@@ -4,11 +4,11 @@ import { fetchAdminDatasets, approveDataset, rejectDataset } from '../../redux/d
 import ChartRenderer from '../../components/visualizations/ChartRenderer';
 import Modal from '../../components/common/Modal';
 import { toast } from 'react-toastify';
-import { CheckCircle2, XCircle, Eye, AlertCircle, User, Calendar } from 'lucide-react';
+import { CheckCircle2, XCircle, Eye } from 'lucide-react';
 
 const DatasetApproval = () => {
   const dispatch = useDispatch();
-  const { adminList, loading } = useSelector((state) => state.datasets);
+  const { adminList } = useSelector((state) => state.datasets);
 
   const [previewDataset, setPreviewDataset] = useState(null);
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
@@ -56,16 +56,16 @@ const DatasetApproval = () => {
   };
 
   return (
-    <div className="space-y-8 pb-12">
-      <div>
-        <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">Dataset Approval Queue</h1>
+    <div className="space-y-6 pb-12 font-sans">
+      <div className="border-b border-slate-200 pb-3">
+        <h1 className="text-xl font-bold text-slate-900">Dataset Approval Queue</h1>
         <p className="text-xs text-slate-500">Review pending CSV telemetry datasets submitted by Admins before public release</p>
       </div>
 
       {pendingList.length === 0 ? (
-        <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 text-slate-500 space-y-2">
-          <CheckCircle2 className="w-10 h-10 mx-auto text-emerald-500" />
-          <p className="font-bold text-base text-slate-700 dark:text-slate-200">No Pending Approval Requests!</p>
+        <div className="p-12 text-center bg-white rounded border border-slate-200 text-slate-500 space-y-2">
+          <CheckCircle2 className="w-8 h-8 mx-auto text-green-600" />
+          <p className="font-bold text-sm text-slate-900">No Pending Approval Requests</p>
           <p className="text-xs">All submitted datasets have been reviewed and published.</p>
         </div>
       ) : (
@@ -73,57 +73,57 @@ const DatasetApproval = () => {
           {pendingList.map((dataset) => (
             <div
               key={dataset._id || dataset.id}
-              className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-xl space-y-4"
+              className="bg-white rounded border border-slate-200 p-5 shadow-sm space-y-4"
             >
-              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-4">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 border-b border-slate-100 pb-3">
                 <div className="space-y-1">
                   <div className="flex items-center space-x-2">
-                    <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold uppercase bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300">
-                      Pending &bull; {dataset.domain}
+                    <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-amber-50 text-amber-800 border border-amber-200">
+                      Pending Review &bull; {dataset.domain}
                     </span>
-                    <span className="text-xs font-semibold text-slate-400">
-                      Chart Type: {dataset.chartType}
+                    <span className="text-xs text-slate-500 font-medium">
+                      Type: {dataset.chartType}
                     </span>
                   </div>
-                  <h2 className="text-xl font-extrabold text-slate-900 dark:text-white">{dataset.title}</h2>
-                  <p className="text-xs text-slate-400">
+                  <h2 className="text-lg font-bold text-slate-900">{dataset.title}</h2>
+                  <p className="text-xs text-slate-500">
                     Uploaded by: <strong>{dataset.uploadedBy?.name || 'Admin'}</strong> ({dataset.uploadedBy?.email}) on {new Date(dataset.createdAt).toLocaleDateString()}
                   </p>
                 </div>
 
-                <div className="flex items-center space-x-3">
+                <div className="flex items-center space-x-2">
                   <button
                     onClick={() => setPreviewDataset(dataset)}
-                    className="flex items-center space-x-1.5 px-3.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold hover:bg-slate-200"
+                    className="flex items-center space-x-1 px-3 py-1.5 rounded border border-slate-300 text-slate-700 hover:bg-slate-50 text-xs font-bold"
                   >
-                    <Eye className="w-4 h-4" />
-                    <span>Inspect Preview</span>
+                    <Eye className="w-3.5 h-3.5" />
+                    <span>Inspect</span>
                   </button>
 
                   <button
                     onClick={() => openRejectModal(dataset._id || dataset.id)}
-                    className="flex items-center space-x-1.5 px-4 py-2 rounded-xl bg-rose-50 dark:bg-rose-950/60 text-rose-700 dark:text-rose-300 text-xs font-bold border border-rose-200 dark:border-rose-800 hover:bg-rose-100"
+                    className="flex items-center space-x-1 px-3 py-1.5 rounded bg-red-50 text-red-700 text-xs font-bold border border-red-200 hover:bg-red-100"
                   >
-                    <XCircle className="w-4 h-4" />
+                    <XCircle className="w-3.5 h-3.5" />
                     <span>Reject</span>
                   </button>
 
                   <button
                     onClick={() => handleApprove(dataset._id || dataset.id)}
-                    className="flex items-center space-x-1.5 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-extrabold shadow-md shadow-emerald-600/20"
+                    className="flex items-center space-x-1 px-4 py-1.5 rounded bg-slate-900 hover:bg-black text-white text-xs font-bold shadow-sm"
                   >
-                    <CheckCircle2 className="w-4 h-4" />
+                    <CheckCircle2 className="w-3.5 h-3.5 text-green-400" />
                     <span>Approve & Publish</span>
                   </button>
                 </div>
               </div>
 
               {dataset.description && (
-                <p className="text-xs text-slate-600 dark:text-slate-300">{dataset.description}</p>
+                <p className="text-xs text-slate-600 leading-relaxed">{dataset.description}</p>
               )}
 
               {/* Render Preview Component */}
-              <div className="pt-2">
+              <div className="pt-1">
                 <ChartRenderer dataset={dataset} />
               </div>
             </div>
@@ -138,27 +138,27 @@ const DatasetApproval = () => {
         title="Reject Dataset Submission"
         maxWidth="max-w-md"
       >
-        <div className="space-y-4">
-          <p className="text-xs text-slate-600 dark:text-slate-400">
-            Please provide a rejection feedback reason for the Admin user:
+        <div className="space-y-4 font-sans">
+          <p className="text-xs text-slate-600">
+            Please provide rejection feedback for the Admin user:
           </p>
           <textarea
             rows={3}
             value={rejectionReason}
             onChange={(e) => setRejectionReason(e.target.value)}
-            placeholder="e.g. Malformed field values or wrong chart type selected..."
-            className="w-full p-3 font-sans text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-slate-50 dark:bg-slate-950 focus:ring-2 focus:ring-rose-500 outline-none"
+            placeholder="e.g. Malformed field values or incorrect state name format..."
+            className="w-full p-2.5 text-xs rounded border border-slate-300 bg-white focus:border-slate-800 outline-none"
           />
-          <div className="flex justify-end space-x-3 pt-2">
+          <div className="flex justify-end space-x-2 pt-2">
             <button
               onClick={() => setRejectModalOpen(false)}
-              className="px-4 py-2 rounded-xl text-xs font-bold text-slate-600 bg-slate-100 dark:bg-slate-800"
+              className="px-3 py-1.5 rounded text-xs font-semibold text-slate-600 border border-slate-300 hover:bg-slate-50"
             >
               Cancel
             </button>
             <button
               onClick={handleConfirmReject}
-              className="px-4 py-2 rounded-xl text-xs font-bold text-white bg-rose-600 hover:bg-rose-700 shadow"
+              className="px-4 py-1.5 rounded text-xs font-bold text-white bg-red-600 hover:bg-red-700 shadow-sm"
             >
               Confirm Rejection
             </button>

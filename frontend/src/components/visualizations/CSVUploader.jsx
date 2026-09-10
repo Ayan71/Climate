@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Upload, FileText, AlertCircle, CheckCircle, Download } from 'lucide-react';
+import { Upload, AlertCircle, Download } from 'lucide-react';
 
 const SAMPLES = {
   latlng: `latitude,longitude,value,name,city
@@ -48,16 +48,16 @@ const CSVUploader = ({
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div className="flex space-x-2 border-b border-slate-200 dark:border-slate-800 w-full pb-2">
+    <div className="space-y-3 font-sans">
+      <div className="flex items-center justify-between border-b border-slate-200 pb-2">
+        <div className="flex space-x-2">
           <button
             type="button"
             onClick={() => setActiveTab('file')}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+            className={`px-3 py-1.5 text-xs font-bold rounded transition-colors ${
               activeTab === 'file'
-                ? 'bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 font-bold'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                ? 'bg-slate-900 text-white'
+                : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
             Upload .CSV File
@@ -65,33 +65,33 @@ const CSVUploader = ({
           <button
             type="button"
             onClick={() => setActiveTab('paste')}
-            className={`px-4 py-2 text-sm font-medium rounded-lg transition-colors ${
+            className={`px-3 py-1.5 text-xs font-bold rounded transition-colors ${
               activeTab === 'paste'
-                ? 'bg-teal-50 dark:bg-teal-950/60 text-teal-700 dark:text-teal-300 font-bold'
-                : 'text-slate-600 dark:text-slate-400 hover:text-slate-900'
+                ? 'bg-slate-900 text-white'
+                : 'text-slate-600 hover:bg-slate-100'
             }`}
           >
-            Paste CSV Data
-          </button>
-
-          <button
-            type="button"
-            onClick={handleLoadSample}
-            className="ml-auto flex items-center space-x-1 px-3 py-1.5 text-xs font-semibold text-teal-700 dark:text-teal-300 bg-teal-100 dark:bg-teal-900/40 hover:bg-teal-200 rounded-lg transition-colors"
-          >
-            <Download className="w-3.5 h-3.5" />
-            <span>Load Sample CSV</span>
+            Paste CSV Text
           </button>
         </div>
+
+        <button
+          type="button"
+          onClick={handleLoadSample}
+          className="flex items-center space-x-1 px-2.5 py-1 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded border border-slate-300"
+        >
+          <Download className="w-3.5 h-3.5" />
+          <span>Load Sample Data</span>
+        </button>
       </div>
 
       {activeTab === 'file' ? (
-        <div className="border-2 border-dashed border-slate-300 dark:border-slate-700 hover:border-teal-500 rounded-2xl p-6 text-center bg-slate-50/50 dark:bg-slate-900/40 transition-colors">
-          <Upload className="w-10 h-10 mx-auto text-teal-600 dark:text-teal-400 mb-2 animate-bounce" />
-          <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">
-            {file ? file.name : 'Drag & Drop your dataset .CSV file here or click to browse'}
+        <div className="border-2 border-dashed border-slate-300 rounded p-6 text-center bg-slate-50">
+          <Upload className="w-8 h-8 mx-auto text-slate-500 mb-2" />
+          <p className="text-xs font-bold text-slate-800">
+            {file ? file.name : 'Drag & Drop dataset .CSV file here or click to browse'}
           </p>
-          <p className="text-xs text-slate-500 mt-1">Supports standard CSV formatting up to 10MB</p>
+          <p className="text-[11px] text-slate-500 mt-0.5">Supports CSV files up to 10MB</p>
           <input
             type="file"
             accept=".csv,text/csv"
@@ -101,7 +101,7 @@ const CSVUploader = ({
           />
           <label
             htmlFor="csv-file-input"
-            className="inline-block mt-4 px-4 py-2 bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold rounded-lg cursor-pointer transition-colors shadow"
+            className="inline-block mt-3 px-3.5 py-1.5 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded cursor-pointer transition-colors"
           >
             Select File
           </label>
@@ -109,23 +109,23 @@ const CSVUploader = ({
       ) : (
         <div className="space-y-2">
           <textarea
-            rows={7}
+            rows={6}
             value={rawCsvText}
             onChange={(e) => setRawCsvText(e.target.value)}
-            placeholder="latitude,longitude,value,name&#10;28.6139,77.2090,46.2,Safdarjung"
-            className="w-full p-3 font-mono text-xs rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 focus:ring-2 focus:ring-teal-500 outline-none"
+            placeholder="latitude,longitude,value,name&#10;28.6139,77.2090,46.2,Safdarjung Station"
+            className="w-full p-2.5 font-mono text-xs rounded border border-slate-300 bg-white outline-none"
           />
         </div>
       )}
 
       {/* Built-in Schema Validation Errors Display */}
       {validationErrors && validationErrors.length > 0 && (
-        <div className="p-4 rounded-xl bg-red-50 dark:bg-red-950/60 border border-red-200 dark:border-red-800 text-red-800 dark:text-red-200 text-xs space-y-2">
-          <div className="flex items-center space-x-2 font-bold text-sm">
+        <div className="p-3.5 rounded bg-red-50 border border-red-200 text-red-800 text-xs space-y-1.5">
+          <div className="flex items-center space-x-1.5 font-bold">
             <AlertCircle className="w-4 h-4 text-red-600" />
-            <span>CSV Schema Validation Rejected ({validationErrors.length} Errors Found)</span>
+            <span>CSV Schema Validation Errors ({validationErrors.length})</span>
           </div>
-          <ul className="list-disc list-inside space-y-1 font-mono text-[11px] max-h-36 overflow-y-auto pr-1">
+          <ul className="list-disc list-inside space-y-0.5 font-mono text-[11px] max-h-32 overflow-y-auto">
             {validationErrors.map((err, i) => (
               <li key={i}>{err}</li>
             ))}

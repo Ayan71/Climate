@@ -1,10 +1,10 @@
 import React, { useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { fetchAdminDatasets, deleteDataset, approveDataset, rejectDataset } from '../../redux/datasetSlice';
+import { fetchAdminDatasets, deleteDataset, approveDataset } from '../../redux/datasetSlice';
 import StatusBadge from '../../components/common/StatusBadge';
 import { Link } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { Eye, Trash2, CheckCircle2, XCircle } from 'lucide-react';
+import { Eye, Trash2, CheckCircle2 } from 'lucide-react';
 
 const AllDatasets = () => {
   const dispatch = useDispatch();
@@ -22,7 +22,7 @@ const AllDatasets = () => {
   };
 
   const handleDelete = async (id) => {
-    if (window.confirm('Delete dataset?')) {
+    if (window.confirm('Are you sure you want to delete this dataset?')) {
       const res = await dispatch(deleteDataset(id));
       if (deleteDataset.fulfilled.match(res)) {
         toast.success('Dataset deleted.');
@@ -31,46 +31,52 @@ const AllDatasets = () => {
   };
 
   return (
-    <div className="space-y-6 pb-12">
-      <div>
-        <h1 className="text-2xl font-extrabold text-slate-900 dark:text-white">Master Dataset Management</h1>
-        <p className="text-xs text-slate-500">View and manage all datasets submitted by any Admin across system</p>
+    <div className="space-y-6 pb-12 font-sans">
+      <div className="border-b border-slate-200 pb-3">
+        <h1 className="text-xl font-bold text-slate-900">Master Dataset Management</h1>
+        <p className="text-xs text-slate-500">View and manage all datasets submitted by any Admin across the platform</p>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-xl space-y-4">
-        <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800">
-          <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
-            <thead className="bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 uppercase text-[10px] font-extrabold tracking-wider border-b border-slate-200 dark:border-slate-700">
+      <div className="bg-white rounded border border-slate-200 p-5 shadow-sm space-y-4">
+        <div className="overflow-x-auto border border-slate-200 rounded">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead className="bg-slate-100 text-slate-900 uppercase text-[10px] font-bold tracking-wider border-b border-slate-200">
               <tr>
-                <th className="p-3.5">Title</th>
-                <th className="p-3.5">Domain</th>
-                <th className="p-3.5">Chart Type</th>
-                <th className="p-3.5">Uploader</th>
-                <th className="p-3.5">Status</th>
-                <th className="p-3.5 text-right">Actions</th>
+                <th className="p-3">Title</th>
+                <th className="p-3">Domain</th>
+                <th className="p-3">Category</th>
+                <th className="p-3">Uploader</th>
+                <th className="p-3">Status</th>
+                <th className="p-3 text-right">Actions</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+            <tbody className="divide-y divide-slate-200">
               {loading ? (
-                <tr><td colSpan={6} className="p-8 text-center text-slate-400">Loading...</td></tr>
+                <tr><td colSpan={6} className="p-8 text-center text-slate-400">Loading datasets...</td></tr>
               ) : adminList.length === 0 ? (
                 <tr><td colSpan={6} className="p-8 text-center text-slate-500">No datasets found in database.</td></tr>
               ) : (
                 adminList.map((d) => (
-                  <tr key={d._id || d.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                    <td className="p-3.5 font-bold text-slate-900 dark:text-white max-w-xs truncate">{d.title}</td>
-                    <td className="p-3.5"><span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 dark:bg-slate-800">{d.domain}</span></td>
-                    <td className="p-3.5 font-mono text-[11px]">{d.chartType}</td>
-                    <td className="p-3.5 font-semibold text-slate-600 dark:text-slate-300">{d.uploadedBy?.name || 'Admin'}</td>
-                    <td className="p-3.5"><StatusBadge status={d.status} /></td>
-                    <td className="p-3.5 text-right space-x-2">
-                      <Link to={`/dataset/${d._id || d.id}`} className="p-1 text-teal-600 hover:bg-teal-50 rounded"><Eye className="w-4 h-4 inline" /></Link>
+                  <tr key={d._id || d.id} className="hover:bg-slate-50">
+                    <td className="p-3 font-bold text-slate-900 max-w-xs truncate">{d.title}</td>
+                    <td className="p-3">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 border border-slate-200 text-slate-800">
+                        {d.domain}
+                      </span>
+                    </td>
+                    <td className="p-3 text-slate-600 font-medium">{d.category || 'General'}</td>
+                    <td className="p-3 font-semibold text-slate-700">{d.uploadedBy?.name || 'Admin'}</td>
+                    <td className="p-3"><StatusBadge status={d.status} /></td>
+                    <td className="p-3 text-right space-x-2">
+                      <Link to={`/dataset/${d._id || d.id}`} className="p-1 text-slate-600 hover:text-slate-900" title="Inspect">
+                        <Eye className="w-4 h-4 inline" />
+                      </Link>
                       {d.status === 'pending' && (
-                        <button onClick={() => handleApprove(d._id || d.id)} className="p-1 text-emerald-600 hover:bg-emerald-50 rounded" title="Approve">
+                        <button onClick={() => handleApprove(d._id || d.id)} className="p-1 text-green-600 hover:text-green-800" title="Approve">
                           <CheckCircle2 className="w-4 h-4 inline" />
                         </button>
                       )}
-                      <button onClick={() => handleDelete(d._id || d.id)} className="p-1 text-red-600 hover:bg-red-50 rounded" title="Delete">
+                      <button onClick={() => handleDelete(d._id || d.id)} className="p-1 text-red-600 hover:text-red-800" title="Delete">
                         <Trash2 className="w-4 h-4 inline" />
                       </button>
                     </td>

@@ -10,14 +10,10 @@ import {
   Wind,
   Zap,
   Activity,
-  Filter,
   Search,
-  Calendar,
   User,
   Eye,
-  Tag,
-  Download,
-  MapPin
+  Tag
 } from 'lucide-react';
 
 const INDIAN_STATES = [

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { MapContainer, TileLayer, GeoJSON, Tooltip } from 'react-leaflet';
+import { MapContainer, TileLayer, GeoJSON } from 'react-leaflet';
 import indiaGeoJSON from '../../data/india-states.json';
 import { Layers, Info } from 'lucide-react';
 
@@ -8,17 +8,16 @@ const getColor = (value, minVal, maxVal) => {
   const range = maxVal - minVal || 1;
   const ratio = (value - minVal) / range;
 
-  if (ratio > 0.8) return '#0f766e'; // deep teal
-  if (ratio > 0.6) return '#0d9488'; // teal
-  if (ratio > 0.4) return '#14b8a6'; // medium emerald
-  if (ratio > 0.2) return '#5eead4'; // light emerald
-  return '#ccfbf1'; // soft teal
+  if (ratio > 0.8) return '#d97706'; // darker amber/gold
+  if (ratio > 0.6) return '#f59e0b'; // amber
+  if (ratio > 0.4) return '#fbbf24'; // yellow
+  if (ratio > 0.2) return '#fde047'; // light yellow
+  return '#fef9c3'; // soft cream/yellow
 };
 
-const HeatmapView = ({ data = [], title = 'India State-wise Heatmap' }) => {
+const HeatmapView = ({ data = [] }) => {
   const [hoveredState, setHoveredState] = useState(null);
 
-  // Map state values
   const valueMap = {};
   let minVal = Infinity;
   let maxVal = -Infinity;
@@ -43,25 +42,34 @@ const HeatmapView = ({ data = [], title = 'India State-wise Heatmap' }) => {
       fillColor: getColor(val, minVal, maxVal),
       weight: 1.5,
       opacity: 1,
-      color: '#ffffff',
-      dashArray: '3',
+      color: '#334155',
+      dashArray: '',
       fillOpacity: 0.85,
     };
   };
 
   const onEachFeature = (feature, layer) => {
     const stateName = feature.properties.ST_NM || 'State';
+    const stateCode = feature.properties.state_code || '';
     const val = valueMap[stateName.toLowerCase()];
+
+    // Permanent tooltip displaying state code
+    if (stateCode) {
+      layer.bindTooltip(
+        `<div style="font-weight:bold; font-size:11px; color:#0f172a;">${stateCode}</div>`,
+        { permanent: true, direction: 'center', className: 'state-code-label' }
+      );
+    }
 
     layer.on({
       mouseover: (e) => {
         const l = e.target;
         l.setStyle({
           weight: 3,
-          color: '#0f766e',
+          color: '#0f172a',
           fillOpacity: 0.95,
         });
-        setHoveredState({ name: stateName, value: val !== undefined ? val : 'N/A' });
+        setHoveredState({ name: stateName, code: stateCode, value: val !== undefined ? val : 'N/A' });
       },
       mouseout: (e) => {
         const l = e.target;
@@ -75,22 +83,22 @@ const HeatmapView = ({ data = [], title = 'India State-wise Heatmap' }) => {
   const zoom = 5;
 
   return (
-    <div className="w-full flex flex-col space-y-3">
-      <div className="flex items-center justify-between px-1">
-        <div className="flex items-center space-x-2 text-sm text-slate-600 dark:text-slate-400">
-          <Layers className="w-4 h-4 text-teal-600" />
-          <span>Interactive State-level Heatmap (Min: <strong>{minVal}</strong>, Max: <strong>{maxVal}</strong>)</span>
+    <div className="w-full flex flex-col space-y-2 font-sans">
+      <div className="flex items-center justify-between px-1 text-xs text-slate-600">
+        <div className="flex items-center space-x-1.5">
+          <Layers className="w-4 h-4 text-slate-700" />
+          <span>India State-level Choropleth Heatmap (Min: <strong>{minVal}</strong>, Max: <strong>{maxVal}</strong>)</span>
         </div>
 
         {hoveredState && (
-          <div className="flex items-center space-x-2 text-xs font-semibold px-3 py-1 bg-teal-100 dark:bg-teal-900/60 text-teal-800 dark:text-teal-200 rounded-full border border-teal-300 dark:border-teal-700 animate-pulse">
+          <div className="flex items-center space-x-1 px-2.5 py-0.5 bg-slate-100 text-slate-800 rounded font-semibold border border-slate-300">
             <Info className="w-3.5 h-3.5" />
-            <span>{hoveredState.name}: {hoveredState.value}</span>
+            <span>{hoveredState.name} ({hoveredState.code}): {hoveredState.value}</span>
           </div>
         )}
       </div>
 
-      <div className="relative w-full h-[450px] md:h-[520px] rounded-2xl overflow-hidden border border-slate-200 dark:border-slate-800 shadow-lg">
+      <div className="relative w-full h-[450px] rounded border border-slate-200 overflow-hidden shadow-sm">
         <MapContainer
           center={center}
           zoom={zoom}
@@ -110,15 +118,15 @@ const HeatmapView = ({ data = [], title = 'India State-wise Heatmap' }) => {
         </MapContainer>
 
         {/* Legend Overlay */}
-        <div className="absolute bottom-4 right-4 z-[400] bg-white/90 dark:bg-slate-900/90 backdrop-blur-md p-3 rounded-xl shadow-md border border-slate-200 dark:border-slate-800 text-xs">
-          <p className="font-semibold text-slate-800 dark:text-slate-200 mb-2">Intensity Legend</p>
+        <div className="absolute bottom-3 right-3 z-[400] bg-white p-2.5 rounded shadow border border-slate-200 text-xs">
+          <p className="font-bold text-slate-800 mb-1 text-[11px]">Intensity Scale</p>
           <div className="flex items-center space-x-1">
             <span className="text-[10px] text-slate-500">Low</span>
-            <div className="w-4 h-3 rounded" style={{ backgroundColor: '#ccfbf1' }}></div>
-            <div className="w-4 h-3 rounded" style={{ backgroundColor: '#5eead4' }}></div>
-            <div className="w-4 h-3 rounded" style={{ backgroundColor: '#14b8a6' }}></div>
-            <div className="w-4 h-3 rounded" style={{ backgroundColor: '#0d9488' }}></div>
-            <div className="w-4 h-3 rounded" style={{ backgroundColor: '#0f766e' }}></div>
+            <div className="w-3.5 h-3.5 rounded" style={{ backgroundColor: '#fef9c3' }}></div>
+            <div className="w-3.5 h-3.5 rounded" style={{ backgroundColor: '#fde047' }}></div>
+            <div className="w-3.5 h-3.5 rounded" style={{ backgroundColor: '#fbbf24' }}></div>
+            <div className="w-3.5 h-3.5 rounded" style={{ backgroundColor: '#f59e0b' }}></div>
+            <div className="w-3.5 h-3.5 rounded" style={{ backgroundColor: '#d97706' }}></div>
             <span className="text-[10px] text-slate-500">High</span>
           </div>
         </div>

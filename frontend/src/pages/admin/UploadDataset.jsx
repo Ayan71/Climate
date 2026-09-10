@@ -320,7 +320,7 @@ const UploadDataset = () => {
             className="px-5 py-2.5 bg-slate-900 hover:bg-black text-white font-bold rounded text-xs shadow flex items-center space-x-2 transition-all disabled:opacity-50"
           >
             <Upload className="w-4 h-4" />
-            <span>{loading ? 'Validating & Uploading...' : 'Upload & Submit Dataset'}</span>
+            <span>{loading ? 'Validating & Submitting...' : 'Submit for Approval'}</span>
           </button>
         </div>
       </form>

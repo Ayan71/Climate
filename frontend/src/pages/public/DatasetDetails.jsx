@@ -11,8 +11,6 @@ import {
   Table as TableIcon,
   Calendar,
   User,
-  Tag,
-  MapPin,
   Lock,
   ChevronLeft,
   ChevronRight
@@ -102,7 +100,6 @@ const DatasetDetails = () => {
     domain,
     chartType,
     category,
-    tags,
     source,
     year,
     state,
