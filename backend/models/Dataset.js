@@ -21,7 +21,42 @@ const DatasetSchema = new mongoose.Schema(
     chartType: {
       type: String,
       required: [true, 'Please select a chart type'],
-      enum: ['latlng', 'statewise', 'timeseries_line', 'timeseries_bar', 'timeseries_area'],
+      enum: ['latlng', 'statewise', 'timeseries_line', 'timeseries_bar', 'timeseries_area', 'multiline', 'pie', 'doughnut'],
+    },
+    category: {
+      type: String,
+      default: 'General',
+      trim: true,
+    },
+    tags: [
+      {
+        type: String,
+        trim: true,
+      },
+    ],
+    source: {
+      type: String,
+      default: 'Government / Open Data Repository',
+      trim: true,
+    },
+    year: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    state: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    district: {
+      type: String,
+      default: '',
+      trim: true,
+    },
+    downloadEnabled: {
+      type: Boolean,
+      default: true,
     },
     status: {
       type: String,

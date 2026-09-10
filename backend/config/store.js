@@ -2,6 +2,8 @@
 const memoryStore = {
   users: [],
   datasets: [],
+  categories: [],
+  approvals: [],
   activityLogs: [],
   isMongoConnected: false,
 };

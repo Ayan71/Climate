@@ -1,6 +1,7 @@
 const fs = require('fs');
 const csvParser = require('csv-parser');
 const Dataset = require('../models/Dataset');
+const Approval = require('../models/Approval');
 const ActivityLog = require('../models/ActivityLog');
 const memoryStore = require('../config/store');
 const mongoose = require('mongoose');
@@ -25,12 +26,25 @@ const parseCSVContent = (csvString) => {
 // @access  Private (Admin / SuperAdmin)
 exports.createDataset = async (req, res) => {
   try {
-    const { title, description, domain, chartType, rawCsvText } = req.body;
+    const {
+      title,
+      description,
+      domain,
+      chartType,
+      category,
+      tags,
+      source,
+      year,
+      state,
+      district,
+      downloadEnabled,
+      rawCsvText,
+    } = req.body;
 
-    if (!title || !domain || !chartType) {
+    if (!title || !domain) {
       return res.status(400).json({
         success: false,
-        error: 'Please provide Title, Domain, and Chart Type',
+        error: 'Please provide Title and Domain',
       });
     }
 
@@ -50,7 +64,8 @@ exports.createDataset = async (req, res) => {
     }
 
     const rawRows = await parseCSVContent(csvContent);
-    const validationResult = validateCSV(rawRows, chartType);
+    const selectedType = chartType || 'auto';
+    const validationResult = validateCSV(rawRows, selectedType);
 
     if (!validationResult.isValid) {
       if (req.file && fs.existsSync(req.file.path)) {
@@ -63,13 +78,28 @@ exports.createDataset = async (req, res) => {
       });
     }
 
+    const finalChartType = validationResult.detectedChartType || chartType || 'timeseries_line';
+
+    const parsedTags = Array.isArray(tags)
+      ? tags
+      : typeof tags === 'string'
+      ? tags.split(',').map(t => t.trim()).filter(Boolean)
+      : [];
+
     const newDataset = {
       _id: 'dataset_' + Date.now(),
       id: 'dataset_' + Date.now(),
       title,
       description: description || '',
       domain,
-      chartType,
+      chartType: finalChartType,
+      category: category || 'General',
+      tags: parsedTags,
+      source: source || 'Government / Open Data Repository',
+      year: year || '',
+      state: state || '',
+      district: district || '',
+      downloadEnabled: downloadEnabled !== undefined ? Boolean(downloadEnabled) : true,
       status: 'pending',
       approvalStatus: 'pending',
       rejectionReason: '',
@@ -129,7 +159,7 @@ exports.createDataset = async (req, res) => {
 // @access  Private (Admin / SuperAdmin)
 exports.getDatasets = async (req, res) => {
   try {
-    const { status, domain, myOnly } = req.query;
+    const { status, domain, category, year, state, myOnly, search } = req.query;
 
     if (mongoose.connection.readyState === 1) {
       let query = {};
@@ -138,6 +168,17 @@ exports.getDatasets = async (req, res) => {
       }
       if (status) query.status = status;
       if (domain) query.domain = domain;
+      if (category) query.category = category;
+      if (year) query.year = year;
+      if (state) query.state = state;
+      if (search) {
+        query.$or = [
+          { title: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } },
+          { tags: { $regex: search, $options: 'i' } },
+          { source: { $regex: search, $options: 'i' } },
+        ];
+      }
 
       const datasets = await Dataset.find(query)
         .populate('uploadedBy', 'name email role')
@@ -159,11 +200,19 @@ exports.getDatasets = async (req, res) => {
       });
     }
 
-    if (status) {
-      list = list.filter(d => d.status === status);
-    }
-    if (domain) {
-      list = list.filter(d => d.domain === domain);
+    if (status) list = list.filter(d => d.status === status);
+    if (domain) list = list.filter(d => d.domain === domain);
+    if (category) list = list.filter(d => d.category === category);
+    if (year) list = list.filter(d => String(d.year) === String(year));
+    if (state) list = list.filter(d => d.state === state);
+    if (search) {
+      const s = search.toLowerCase();
+      list = list.filter(d =>
+        (d.title && d.title.toLowerCase().includes(s)) ||
+        (d.description && d.description.toLowerCase().includes(s)) ||
+        (d.source && d.source.toLowerCase().includes(s)) ||
+        (d.tags && d.tags.some(t => t.toLowerCase().includes(s)))
+      );
     }
 
     res.status(200).json({
@@ -219,11 +268,31 @@ exports.updateDataset = async (req, res) => {
       });
     }
 
-    const { title, description, domain, chartType } = req.body;
+    const {
+      title,
+      description,
+      domain,
+      chartType,
+      category,
+      tags,
+      source,
+      year,
+      state,
+      district,
+      downloadEnabled,
+    } = req.body;
+
     if (title) dataset.title = title;
     if (description !== undefined) dataset.description = description;
     if (domain) dataset.domain = domain;
     if (chartType) dataset.chartType = chartType;
+    if (category) dataset.category = category;
+    if (tags) dataset.tags = Array.isArray(tags) ? tags : String(tags).split(',').map(t => t.trim());
+    if (source) dataset.source = source;
+    if (year !== undefined) dataset.year = year;
+    if (state !== undefined) dataset.state = state;
+    if (district !== undefined) dataset.district = district;
+    if (downloadEnabled !== undefined) dataset.downloadEnabled = Boolean(downloadEnabled);
 
     if (req.user.role === 'admin') {
       dataset.status = 'pending';
@@ -237,6 +306,13 @@ exports.updateDataset = async (req, res) => {
         if (description !== undefined) dbDataset.description = description;
         if (domain) dbDataset.domain = domain;
         if (chartType) dbDataset.chartType = chartType;
+        if (category) dbDataset.category = category;
+        if (tags) dbDataset.tags = dataset.tags;
+        if (source) dbDataset.source = source;
+        if (year !== undefined) dbDataset.year = year;
+        if (state !== undefined) dbDataset.state = state;
+        if (district !== undefined) dbDataset.district = district;
+        if (downloadEnabled !== undefined) dbDataset.downloadEnabled = Boolean(downloadEnabled);
         if (req.user.role === 'admin') {
           dbDataset.status = 'pending';
           dbDataset.approvalStatus = 'pending';
@@ -272,7 +348,6 @@ exports.deleteDataset = async (req, res) => {
       });
     }
 
-    const dataset = memoryStore.datasets[index];
     memoryStore.datasets.splice(index, 1);
 
     if (mongoose.connection.readyState === 1) {
@@ -314,6 +389,20 @@ exports.approveDataset = async (req, res) => {
     dataset.order = newOrder;
     dataset.rejectionReason = '';
 
+    const approvalEntry = {
+      _id: 'app_' + Date.now(),
+      dataset: dataset._id || dataset.id,
+      datasetTitle: dataset.title,
+      reviewedBy: req.user.id,
+      reviewerName: req.user.name,
+      action: 'approved',
+      rejectionReason: '',
+      createdAt: new Date(),
+    };
+
+    if (!memoryStore.approvals) memoryStore.approvals = [];
+    memoryStore.approvals.unshift(approvalEntry);
+
     if (mongoose.connection.readyState === 1) {
       let dbDataset = await Dataset.findById(req.params.id);
       if (dbDataset) {
@@ -324,6 +413,13 @@ exports.approveDataset = async (req, res) => {
         dbDataset.rejectionReason = '';
         await dbDataset.save();
       }
+      await Approval.create({
+        dataset: req.params.id,
+        datasetTitle: dataset.title,
+        reviewedBy: req.user.id,
+        reviewerName: req.user.name,
+        action: 'approved',
+      });
     }
 
     memoryStore.activityLogs.unshift({
@@ -366,20 +462,44 @@ exports.rejectDataset = async (req, res) => {
       });
     }
 
+    const reason = rejectionReason || 'Dataset rejected during Super Admin review.';
+
     dataset.status = 'rejected';
     dataset.approvalStatus = 'rejected';
-    dataset.rejectionReason = rejectionReason || 'Dataset rejected during Super Admin review.';
+    dataset.rejectionReason = reason;
     dataset.publishedAt = undefined;
+
+    const approvalEntry = {
+      _id: 'app_' + Date.now(),
+      dataset: dataset._id || dataset.id,
+      datasetTitle: dataset.title,
+      reviewedBy: req.user.id,
+      reviewerName: req.user.name,
+      action: 'rejected',
+      rejectionReason: reason,
+      createdAt: new Date(),
+    };
+
+    if (!memoryStore.approvals) memoryStore.approvals = [];
+    memoryStore.approvals.unshift(approvalEntry);
 
     if (mongoose.connection.readyState === 1) {
       let dbDataset = await Dataset.findById(req.params.id);
       if (dbDataset) {
         dbDataset.status = 'rejected';
         dbDataset.approvalStatus = 'rejected';
-        dbDataset.rejectionReason = dataset.rejectionReason;
+        dbDataset.rejectionReason = reason;
         dbDataset.publishedAt = undefined;
         await dbDataset.save();
       }
+      await Approval.create({
+        dataset: req.params.id,
+        datasetTitle: dataset.title,
+        reviewedBy: req.user.id,
+        reviewerName: req.user.name,
+        action: 'rejected',
+        rejectionReason: reason,
+      });
     }
 
     memoryStore.activityLogs.unshift({

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
 import { Provider } from 'react-redux';
 import { ToastContainer } from 'react-toastify';
@@ -33,6 +33,7 @@ import Profile from './pages/admin/Profile';
 // Super Admin Pages
 import SuperAdminDashboard from './pages/superadmin/SuperAdminDashboard';
 import DatasetApproval from './pages/superadmin/DatasetApproval';
+import CategoryManagement from './pages/superadmin/CategoryManagement';
 import AdminManagement from './pages/superadmin/AdminManagement';
 import AllDatasets from './pages/superadmin/AllDatasets';
 import ActivityLogs from './pages/superadmin/ActivityLogs';
@@ -42,7 +43,7 @@ const LayoutWrapper = () => {
   const isAdminRoute = location.pathname.startsWith('/admin') || location.pathname.startsWith('/superadmin');
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 dark:bg-slate-950 dark:text-slate-100 font-sans transition-colors duration-200">
+    <div className="min-h-screen flex flex-col bg-slate-50 text-slate-900 font-sans">
       <Navbar />
 
       <div className="flex-1 flex w-full">
@@ -75,6 +76,7 @@ const LayoutWrapper = () => {
             <Route element={<ProtectedRoute allowedRoles={['superadmin']} />}>
               <Route path="/superadmin/dashboard" element={<SuperAdminDashboard />} />
               <Route path="/superadmin/approvals" element={<DatasetApproval />} />
+              <Route path="/superadmin/categories" element={<CategoryManagement />} />
               <Route path="/superadmin/admins" element={<AdminManagement />} />
               <Route path="/superadmin/datasets" element={<AllDatasets />} />
               <Route path="/superadmin/logs" element={<ActivityLogs />} />

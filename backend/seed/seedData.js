@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const Dataset = require('../models/Dataset');
+const Category = require('../models/Category');
 const memoryStore = require('../config/store');
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
@@ -32,8 +33,6 @@ const seedSuperAdminAndData = async () => {
           isActive: true,
         });
         console.log(`[Seed] Super Admin created in MongoDB: ${superAdminEmail}`);
-      } else {
-        console.log(`[Seed] Super Admin already exists: ${superAdminEmail}`);
       }
       superAdminId = superAdminUser._id.toString();
 
@@ -76,6 +75,34 @@ const seedSuperAdminAndData = async () => {
       memoryStore.users.push(superAdminObj, sampleAdminObj);
     }
 
+    // Seed Default Categories
+    const defaultCategories = [
+      { name: 'Emissions', slug: 'emissions', domain: 'Climate', description: 'Greenhouse gas emissions, CO2 output, and carbon metrics' },
+      { name: 'Solar Power', slug: 'solar-power', domain: 'Energy', description: 'Solar rooftop, utility solar capacity, and solar radiation' },
+      { name: 'Thermal Power', slug: 'thermal-power', domain: 'Power', description: 'Coal, gas, and thermal power plant statistics' },
+      { name: 'Air Quality', slug: 'air-quality', domain: 'Climate', description: 'AQI, PM2.5, PM10, and atmospheric pollution levels' },
+      { name: 'Renewable Energy', slug: 'renewable-energy', domain: 'Energy', description: 'Wind, hydro, biomass, and clean energy transition' },
+      { name: 'Meteorological Data', slug: 'meteorological-data', domain: 'Climate', description: 'Temperature, rainfall, heatwaves, and monsoons' },
+      { name: 'Grid Capacity', slug: 'grid-capacity', domain: 'Power', description: 'Transmission lines, substation load, and peak demand' },
+    ];
+
+    if (!memoryStore.categories || memoryStore.categories.length === 0) {
+      memoryStore.categories = defaultCategories.map((c, idx) => ({
+        _id: `cat_${idx + 1}`,
+        id: `cat_${idx + 1}`,
+        ...c,
+        createdAt: new Date(),
+      }));
+    }
+
+    if (isMongo) {
+      const catCount = await Category.countDocuments();
+      if (catCount === 0) {
+        await Category.insertMany(defaultCategories);
+        console.log(`[Seed] Seeded ${defaultCategories.length} Categories into MongoDB.`);
+      }
+    }
+
     // Generate valid 24-character ObjectIds for datasets
     const dsId1 = new mongoose.Types.ObjectId();
     const dsId2 = new mongoose.Types.ObjectId();
@@ -92,6 +119,12 @@ const seedSuperAdminAndData = async () => {
         description: 'Real-time telemetry stations tracking max summer temperatures (°C) across major urban and regional climate centers.',
         domain: 'Climate',
         chartType: 'latlng',
+        category: 'Meteorological Data',
+        tags: ['temperature', 'heatwave', 'climate', 'telemetry'],
+        source: 'India Meteorological Department (IMD)',
+        year: '2025',
+        state: 'All India',
+        downloadEnabled: true,
         status: 'approved',
         approvalStatus: 'approved',
         uploadedBy: superAdminId,
@@ -118,6 +151,12 @@ const seedSuperAdminAndData = async () => {
         description: 'Total operational solar power capacity across Indian states as of 2025.',
         domain: 'Energy',
         chartType: 'statewise',
+        category: 'Solar Power',
+        tags: ['solar', 'renewable', 'capacity', 'statewise'],
+        source: 'Ministry of New and Renewable Energy (MNRE)',
+        year: '2025',
+        state: 'All India',
+        downloadEnabled: true,
         status: 'approved',
         approvalStatus: 'approved',
         uploadedBy: sampleAdminId,
@@ -148,6 +187,12 @@ const seedSuperAdminAndData = async () => {
         description: 'Decadal surface temperature variation (°C) relative to historical baselines.',
         domain: 'Climate',
         chartType: 'timeseries_line',
+        category: 'Meteorological Data',
+        tags: ['temperature', 'global warming', 'decadal', 'climate change'],
+        source: 'Global Climate Observing System / IMD',
+        year: '2025',
+        state: 'All India',
+        downloadEnabled: true,
         status: 'approved',
         approvalStatus: 'approved',
         uploadedBy: superAdminId,
@@ -177,6 +222,12 @@ const seedSuperAdminAndData = async () => {
         description: 'Annual peak power demand vs peak power met across India power grids.',
         domain: 'Power',
         chartType: 'timeseries_bar',
+        category: 'Grid Capacity',
+        tags: ['peak demand', 'power grid', 'electricity', 'capacity'],
+        source: 'Central Electricity Authority (CEA)',
+        year: '2025',
+        state: 'All India',
+        downloadEnabled: true,
         status: 'approved',
         approvalStatus: 'approved',
         uploadedBy: sampleAdminId,
@@ -201,6 +252,12 @@ const seedSuperAdminAndData = async () => {
         description: 'Combined annual electricity production from Wind, Solar, and Small Hydro.',
         domain: 'Energy',
         chartType: 'timeseries_area',
+        category: 'Renewable Energy',
+        tags: ['renewable', 'generation', 'clean energy', 'solar', 'wind'],
+        source: 'MNRE / POSOCO',
+        year: '2025',
+        state: 'All India',
+        downloadEnabled: true,
         status: 'approved',
         approvalStatus: 'approved',
         uploadedBy: sampleAdminId,
@@ -223,6 +280,12 @@ const seedSuperAdminAndData = async () => {
         description: 'Annual per capita electricity consumption index across states.',
         domain: 'Power',
         chartType: 'statewise',
+        category: 'Grid Capacity',
+        tags: ['per capita', 'consumption', 'electricity', 'statewise'],
+        source: 'NITI Aayog / CEA',
+        year: '2024',
+        state: 'All India',
+        downloadEnabled: true,
         status: 'approved',
         approvalStatus: 'approved',
         uploadedBy: superAdminId,
@@ -251,6 +314,12 @@ const seedSuperAdminAndData = async () => {
         description: 'Key 765kV High Voltage Substation centers managed by Power Grid Corporation.',
         domain: 'Power',
         chartType: 'latlng',
+        category: 'Grid Capacity',
+        tags: ['substation', 'grid', 'high voltage', 'infrastructure'],
+        source: 'Power Grid Corporation of India (PGCIL)',
+        year: '2025',
+        state: 'All India',
+        downloadEnabled: true,
         status: 'approved',
         approvalStatus: 'approved',
         uploadedBy: superAdminId,

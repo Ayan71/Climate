@@ -37,6 +37,7 @@ exports.getDashboardAnalytics = async (req, res) => {
     res.status(200).json({
       success: true,
       cards: {
+        totalUsers: memoryStore.users.length,
         totalDatasets,
         pendingDatasets,
         approvedDatasets,

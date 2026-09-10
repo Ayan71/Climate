@@ -15,16 +15,21 @@ import {
 } from 'recharts';
 import { TrendingUp } from 'lucide-react';
 
+const COLORS = [
+  '#1e3a8a', '#0284c7', '#059669', '#ca8a04', '#dc2626',
+  '#9333ea', '#475569', '#2563eb', '#0d9488', '#d97706'
+];
+
 const CustomTooltip = ({ active, payload, label }) => {
   if (active && payload && payload.length) {
     return (
-      <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md p-3 rounded-xl border border-slate-200 dark:border-slate-800 shadow-xl text-xs space-y-1">
-        <p className="font-bold text-slate-800 dark:text-slate-200 border-b border-slate-100 dark:border-slate-800 pb-1">
-          Period / Date: {label}
+      <div className="bg-white p-3 rounded border border-slate-200 shadow-md text-xs font-sans">
+        <p className="font-semibold text-slate-800 border-b border-slate-100 pb-1 mb-1">
+          Date / Period: {label}
         </p>
         {payload.map((entry, idx) => (
-          <p key={idx} style={{ color: entry.color }} className="font-semibold">
-            {entry.name}: <span className="font-extrabold">{entry.value}</span>
+          <p key={idx} style={{ color: entry.color }} className="font-medium">
+            {entry.name}: <span className="font-bold">{typeof entry.value === 'number' ? entry.value.toLocaleString() : entry.value}</span>
           </p>
         ))}
       </div>
@@ -35,10 +40,19 @@ const CustomTooltip = ({ active, payload, label }) => {
 
 const TimeSeriesChart = ({
   data = [],
+  columns = [],
   chartType = 'timeseries_line',
   title = 'Time-Series Data',
-  height = 420,
+  height = 380,
 }) => {
+  if (!data || !Array.isArray(data) || data.length === 0) {
+    return (
+      <div className="h-64 flex items-center justify-center bg-slate-50 border border-slate-200 rounded text-slate-500 text-sm font-sans">
+        No dataset rows available to plot.
+      </div>
+    );
+  }
+
   // Sort data chronologically if year or date present
   const sortedData = [...data].sort((a, b) => {
     const keyA = String(a.date || a.year || '');
@@ -46,50 +60,96 @@ const TimeSeriesChart = ({
     return keyA.localeCompare(keyB, undefined, { numeric: true });
   });
 
-  const xAxisKey = sortedData.length > 0 && sortedData[0].year ? 'year' : 'date';
+  const sampleRow = sortedData[0] || {};
+  const xAxisKey = sampleRow.year ? 'year' : sampleRow.date ? 'date' : Object.keys(sampleRow)[0] || 'date';
+
+  // Determine numeric metric keys for multi-line plotting
+  const numericKeys = [];
+  Object.keys(sampleRow).forEach(key => {
+    if (
+      key !== xAxisKey &&
+      key !== 'state' &&
+      key !== 'originalState' &&
+      key !== 'name' &&
+      key !== 'latitude' &&
+      key !== 'longitude' &&
+      key !== '_id' &&
+      key !== 'id'
+    ) {
+      if (typeof sampleRow[key] === 'number') {
+        numericKeys.push(key);
+      }
+    }
+  });
+
+  if (numericKeys.length === 0) {
+    numericKeys.push('value');
+  }
+
+  const isMultiLine = chartType === 'multiline' || (chartType === 'timeseries_line' && numericKeys.length > 1);
 
   return (
-    <div className="w-full flex flex-col space-y-3">
-      <div className="flex items-center space-x-2 text-sm text-slate-600 dark:text-slate-400 px-1">
-        <TrendingUp className="w-4 h-4 text-teal-500" />
-        <span>Time-series trajectory with <strong>{sortedData.length}</strong> data points</span>
+    <div className="w-full font-sans space-y-2">
+      <div className="flex items-center justify-between text-xs text-slate-600 px-1">
+        <div className="flex items-center space-x-1.5 font-medium">
+          <TrendingUp className="w-4 h-4 text-slate-700" />
+          <span><strong>{sortedData.length}</strong> observations recorded</span>
+        </div>
+        {isMultiLine && (
+          <span className="text-slate-500 font-medium bg-slate-100 px-2 py-0.5 rounded border border-slate-200">
+            Multi-series view ({numericKeys.length} metrics)
+          </span>
+        )}
       </div>
 
-      <div className="w-full rounded-2xl p-4 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-md">
+      <div className="w-full rounded border border-slate-200 p-4 bg-white">
         <div style={{ width: '100%', height: height }}>
           <ResponsiveContainer width="100%" height="100%">
             {chartType === 'timeseries_bar' ? (
-              <BarChart data={sortedData} margin={{ top: 20, right: 30, left: 10, bottom: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#94a3b8" opacity={0.2} />
-                <XAxis dataKey={xAxisKey} stroke="#64748b" tick={{ fontSize: 12 }} />
-                <YAxis stroke="#64748b" tick={{ fontSize: 12 }} />
+              <BarChart data={sortedData} margin={{ top: 15, right: 25, left: 10, bottom: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#cbd5e1" vertical={false} />
+                <XAxis dataKey={xAxisKey} stroke="#475569" tick={{ fontSize: 11 }} />
+                <YAxis stroke="#475569" tick={{ fontSize: 11 }} />
                 <Tooltip content={<CustomTooltip />} />
-                <Legend wrapperStyle={{ paddingTop: 10 }} />
-                <Bar dataKey="value" name="Metric Value" fill="#0d9488" radius={[6, 6, 0, 0]} />
+                <Legend wrapperStyle={{ fontSize: '12px', paddingTop: 10 }} />
+                {numericKeys.slice(0, 4).map((key, idx) => (
+                  <Bar key={key} dataKey={key} name={key === 'value' ? 'Metric Value' : key} fill={COLORS[idx % COLORS.length]} radius={[4, 4, 0, 0]} />
+                ))}
               </BarChart>
             ) : chartType === 'timeseries_area' ? (
-              <AreaChart data={sortedData} margin={{ top: 20, right: 30, left: 10, bottom: 20 }}>
+              <AreaChart data={sortedData} margin={{ top: 15, right: 25, left: 10, bottom: 20 }}>
                 <defs>
-                  <linearGradient id="areaColor" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#0d9488" stopOpacity={0.8} />
-                    <stop offset="95%" stopColor="#0d9488" stopOpacity={0.05} />
+                  <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#1e3a8a" stopOpacity={0.4} />
+                    <stop offset="95%" stopColor="#1e3a8a" stopOpacity={0.02} />
                   </linearGradient>
                 </defs>
-                <CartesianGrid strokeDasharray="3 3" stroke="#94a3b8" opacity={0.2} />
-                <XAxis dataKey={xAxisKey} stroke="#64748b" tick={{ fontSize: 12 }} />
-                <YAxis stroke="#64748b" tick={{ fontSize: 12 }} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#cbd5e1" vertical={false} />
+                <XAxis dataKey={xAxisKey} stroke="#475569" tick={{ fontSize: 11 }} />
+                <YAxis stroke="#475569" tick={{ fontSize: 11 }} />
                 <Tooltip content={<CustomTooltip />} />
-                <Legend wrapperStyle={{ paddingTop: 10 }} />
-                <Area type="monotone" dataKey="value" name="Metric Value" stroke="#0d9488" strokeWidth={3} fillOpacity={1} fill="url(#areaColor)" />
+                <Legend wrapperStyle={{ fontSize: '12px', paddingTop: 10 }} />
+                <Area type="monotone" dataKey={numericKeys[0]} name={numericKeys[0] === 'value' ? 'Metric Value' : numericKeys[0]} stroke="#1e3a8a" strokeWidth={2} fillOpacity={1} fill="url(#areaGradient)" />
               </AreaChart>
             ) : (
-              <LineChart data={sortedData} margin={{ top: 20, right: 30, left: 10, bottom: 20 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#94a3b8" opacity={0.2} />
-                <XAxis dataKey={xAxisKey} stroke="#64748b" tick={{ fontSize: 12 }} />
-                <YAxis stroke="#64748b" tick={{ fontSize: 12 }} />
+              <LineChart data={sortedData} margin={{ top: 15, right: 25, left: 10, bottom: 20 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="#cbd5e1" vertical={false} />
+                <XAxis dataKey={xAxisKey} stroke="#475569" tick={{ fontSize: 11 }} />
+                <YAxis stroke="#475569" tick={{ fontSize: 11 }} />
                 <Tooltip content={<CustomTooltip />} />
-                <Legend wrapperStyle={{ paddingTop: 10 }} />
-                <Line type="monotone" dataKey="value" name="Metric Value" stroke="#0d9488" strokeWidth={3} dot={{ r: 5, fill: '#0d9488' }} activeDot={{ r: 8 }} />
+                <Legend wrapperStyle={{ fontSize: '12px', paddingTop: 10 }} />
+                {numericKeys.slice(0, 6).map((key, idx) => (
+                  <Line
+                    key={key}
+                    type="monotone"
+                    dataKey={key}
+                    name={key === 'value' ? 'Metric Value' : key}
+                    stroke={COLORS[idx % COLORS.length]}
+                    strokeWidth={2}
+                    dot={{ r: 4, fill: COLORS[idx % COLORS.length] }}
+                    activeDot={{ r: 6 }}
+                  />
+                ))}
               </LineChart>
             )}
           </ResponsiveContainer>

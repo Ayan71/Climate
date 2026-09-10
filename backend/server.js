@@ -14,6 +14,8 @@ const adminRoutes = require('./routes/adminRoutes');
 const datasetRoutes = require('./routes/datasetRoutes');
 const publicRoutes = require('./routes/publicRoutes');
 const analyticsRoutes = require('./routes/analyticsRoutes');
+const categoryRoutes = require('./routes/categoryRoutes');
+const approvalRoutes = require('./routes/approvalRoutes');
 
 const app = express();
 
@@ -50,6 +52,8 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/datasets', datasetRoutes);
 app.use('/api/public', publicRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/categories', categoryRoutes);
+app.use('/api/approvals', approvalRoutes);
 
 // Healthcheck Route
 app.get('/api/health', (req, res) => {

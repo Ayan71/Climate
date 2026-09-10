@@ -11,7 +11,11 @@ import {
   Table as TableIcon,
   Calendar,
   User,
-  Globe,
+  Tag,
+  MapPin,
+  Lock,
+  ChevronLeft,
+  ChevronRight
 } from 'lucide-react';
 
 const DatasetDetails = () => {
@@ -19,6 +23,12 @@ const DatasetDetails = () => {
   const [dataset, setDataset] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Table pagination & sorting
+  const [currentPage, setCurrentPage] = useState(1);
+  const rowsPerPage = 15;
+  const [sortCol, setSortCol] = useState(null);
+  const [sortDir, setSortDir] = useState('asc');
 
   useEffect(() => {
     const fetchDataset = async () => {
@@ -37,7 +47,10 @@ const DatasetDetails = () => {
 
   // Export JSON to CSV string
   const handleExportCSV = () => {
-    if (!dataset || !dataset.parsedData || dataset.parsedData.length === 0) return;
+    if (!dataset || !dataset.downloadEnabled) {
+      return toast.warn('CSV download is disabled for this dataset');
+    }
+    if (!dataset.parsedData || dataset.parsedData.length === 0) return;
     const data = dataset.parsedData;
     const headers = Object.keys(data[0]);
     const csvRows = [];
@@ -55,7 +68,7 @@ const DatasetDetails = () => {
     const url = window.URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.setAttribute('href', url);
-    a.setAttribute('download', `${dataset.title.replace(/\s+/g, '_')}_dataset.csv`);
+    a.setAttribute('download', `${(dataset.title || 'dataset').replace(/\s+/g, '_')}.csv`);
     a.click();
     toast.success('CSV dataset downloaded successfully!');
   };
@@ -72,10 +85,10 @@ const DatasetDetails = () => {
 
   if (error || !dataset) {
     return (
-      <div className="p-12 text-center bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4">
-        <h2 className="text-xl font-bold text-slate-800 dark:text-slate-200">Dataset Not Found</h2>
+      <div className="p-12 text-center bg-white rounded border border-slate-200 space-y-3 font-sans">
+        <h2 className="text-lg font-bold text-slate-900">Dataset Not Found</h2>
         <p className="text-xs text-slate-500">{error || 'The requested dataset is unavailable.'}</p>
-        <Link to="/" className="inline-flex items-center space-x-2 px-4 py-2 bg-teal-600 text-white rounded-xl text-xs font-bold">
+        <Link to="/" className="inline-flex items-center space-x-2 px-4 py-2 bg-slate-900 text-white rounded text-xs font-bold">
           <ArrowLeft className="w-4 h-4" />
           <span>Back to Landing Page</span>
         </Link>
@@ -83,37 +96,95 @@ const DatasetDetails = () => {
     );
   }
 
-  const { title, description, domain, chartType, parsedData, publishedAt, uploadedBy } = dataset;
-  const columns = parsedData && parsedData.length > 0 ? Object.keys(parsedData[0]) : [];
+  const {
+    title,
+    description,
+    domain,
+    chartType,
+    category,
+    tags,
+    source,
+    year,
+    state,
+    district,
+    downloadEnabled,
+    parsedData,
+    publishedAt,
+    uploadedBy,
+  } = dataset;
+
+  const rawColumns = parsedData && parsedData.length > 0 ? Object.keys(parsedData[0]) : [];
+
+  // Sorting table rows
+  let displayRows = parsedData ? [...parsedData] : [];
+  if (sortCol) {
+    displayRows.sort((a, b) => {
+      const valA = a[sortCol] !== undefined ? a[sortCol] : '';
+      const valB = b[sortCol] !== undefined ? b[sortCol] : '';
+      if (typeof valA === 'number' && typeof valB === 'number') {
+        return sortDir === 'asc' ? valA - valB : valB - valA;
+      }
+      return sortDir === 'asc'
+        ? String(valA).localeCompare(String(valB))
+        : String(valB).localeCompare(String(valA));
+    });
+  }
+
+  const totalPages = Math.ceil(displayRows.length / rowsPerPage) || 1;
+  const paginatedRows = displayRows.slice((currentPage - 1) * rowsPerPage, currentPage * rowsPerPage);
+
+  const handleSort = (col) => {
+    if (sortCol === col) {
+      setSortDir(sortDir === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortCol(col);
+      setSortDir('asc');
+    }
+  };
 
   return (
-    <div className="space-y-8 pb-12">
+    <div className="space-y-6 pb-12 font-sans">
       {/* Back button */}
       <div>
         <Link
           to="/"
-          className="inline-flex items-center space-x-2 text-xs font-bold text-slate-600 dark:text-slate-300 hover:text-teal-600 dark:hover:text-teal-400 transition-colors"
+          className="inline-flex items-center space-x-1.5 text-xs font-semibold text-slate-600 hover:text-slate-900"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span>Back to Public Landing Page</span>
+          <span>Back to Public Datasets Portal</span>
         </Link>
       </div>
 
       {/* Main Container */}
-      <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 p-6 sm:p-10 shadow-2xl space-y-8">
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 dark:border-slate-800 pb-6">
-          <div className="space-y-2">
-            <span className="px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider bg-teal-100 dark:bg-teal-950 text-teal-700 dark:text-teal-300">
-              {domain} Domain &bull; {chartType}
-            </span>
-            <h1 className="text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-white">
+      <div className="bg-white rounded border border-slate-200 p-6 space-y-6 shadow-sm">
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-200 pb-4">
+          <div className="space-y-1.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-50 text-blue-800 border border-blue-200">
+                {domain} Domain
+              </span>
+              {category && (
+                <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                  {category}
+                </span>
+              )}
+              <span className="text-[11px] text-slate-500 font-medium">
+                Type: {chartType}
+              </span>
+            </div>
+
+            <h1 className="text-xl md:text-2xl font-bold text-slate-900">
               {title}
             </h1>
-            <div className="flex items-center space-x-4 text-xs text-slate-400 pt-1">
-              <span className="flex items-center space-x-1">
-                <User className="w-3.5 h-3.5" />
-                <span>By: {uploadedBy?.name || 'Admin'}</span>
-              </span>
+
+            <div className="flex flex-wrap items-center gap-4 text-xs text-slate-500">
+              {uploadedBy && (
+                <span className="flex items-center space-x-1">
+                  <User className="w-3.5 h-3.5" />
+                  <span>Publisher: {uploadedBy.name || 'Admin'}</span>
+                </span>
+              )}
               {publishedAt && (
                 <span className="flex items-center space-x-1">
                   <Calendar className="w-3.5 h-3.5" />
@@ -123,18 +194,25 @@ const DatasetDetails = () => {
             </div>
           </div>
 
-          <div className="flex items-center space-x-3">
-            <button
-              onClick={handleExportCSV}
-              className="flex items-center space-x-2 px-4 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-bold shadow-md shadow-teal-600/20 transition-all"
-            >
-              <Download className="w-4 h-4" />
-              <span>Download CSV Data</span>
-            </button>
+          <div className="flex items-center space-x-2">
+            {downloadEnabled ? (
+              <button
+                onClick={handleExportCSV}
+                className="flex items-center space-x-1.5 px-4 py-2 bg-slate-900 hover:bg-black text-white text-xs font-bold rounded shadow transition-colors"
+              >
+                <Download className="w-4 h-4" />
+                <span>Download CSV Dataset</span>
+              </button>
+            ) : (
+              <span className="flex items-center space-x-1 px-3 py-2 bg-slate-100 text-slate-600 text-xs font-semibold rounded border border-slate-200">
+                <Lock className="w-3.5 h-3.5 text-slate-500" />
+                <span>Download Disabled</span>
+              </span>
+            )}
 
             <button
               onClick={handleCopyEmbed}
-              className="flex items-center space-x-2 px-3 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 text-xs font-bold transition-all"
+              className="flex items-center space-x-1.5 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-bold rounded border border-slate-300 transition-colors"
             >
               <Code className="w-4 h-4" />
               <span>Embed</span>
@@ -142,50 +220,114 @@ const DatasetDetails = () => {
           </div>
         </div>
 
+        {/* Metadata Details Card */}
+        <div className="bg-slate-50 p-4 rounded border border-slate-200 grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
+          <div>
+            <span className="text-[10px] uppercase font-bold text-slate-400 block">Data Source</span>
+            <span className="font-semibold text-slate-800">{source || 'Government Open Data'}</span>
+          </div>
+
+          <div>
+            <span className="text-[10px] uppercase font-bold text-slate-400 block">Year / Period</span>
+            <span className="font-semibold text-slate-800">{year || 'N/A'}</span>
+          </div>
+
+          <div>
+            <span className="text-[10px] uppercase font-bold text-slate-400 block">Geography / State</span>
+            <span className="font-semibold text-slate-800">{state || 'All India'}</span>
+          </div>
+
+          <div>
+            <span className="text-[10px] uppercase font-bold text-slate-400 block">District</span>
+            <span className="font-semibold text-slate-800">{district || 'All Districts'}</span>
+          </div>
+        </div>
+
         {description && (
-          <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed bg-slate-50 dark:bg-slate-950/50 p-4 rounded-2xl border border-slate-200/60 dark:border-slate-800/60">
+          <p className="text-xs text-slate-600 leading-relaxed bg-white p-3 rounded border border-slate-200">
             {description}
           </p>
         )}
 
-        {/* Dynamic Visualization */}
+        {/* Dynamic Chart Visualization */}
         <div className="pt-2">
           <ChartRenderer dataset={dataset} />
         </div>
 
-        {/* Raw Data Table Preview */}
-        <div className="pt-6 border-t border-slate-100 dark:border-slate-800 space-y-4">
+        {/* Responsive Data Table */}
+        <div className="pt-4 border-t border-slate-200 space-y-3">
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2 font-bold text-base text-slate-900 dark:text-white">
-              <TableIcon className="w-5 h-5 text-teal-600" />
-              <span>Raw Dataset Records ({parsedData ? parsedData.length : 0} Rows)</span>
+            <div className="flex items-center space-x-2 font-bold text-sm text-slate-900">
+              <TableIcon className="w-4 h-4 text-slate-700" />
+              <span>Dataset Table View ({displayRows.length} Rows)</span>
             </div>
+
+            <span className="text-xs text-slate-500">Click headers to sort column</span>
           </div>
 
-          <div className="overflow-x-auto rounded-2xl border border-slate-200 dark:border-slate-800 shadow-inner">
-            <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
-              <thead className="bg-slate-100 dark:bg-slate-800/80 text-slate-900 dark:text-slate-100 uppercase text-[10px] font-extrabold tracking-wider border-b border-slate-200 dark:border-slate-700">
+          <div className="overflow-x-auto border border-slate-200 rounded">
+            <table className="w-full text-left text-xs border-collapse font-sans">
+              <thead className="bg-slate-100 text-slate-800 uppercase text-[10px] font-bold border-b border-slate-200">
                 <tr>
-                  <th className="p-3">#</th>
-                  {columns.map((col, i) => (
-                    <th key={i} className="p-3">{col}</th>
+                  <th className="p-2.5 w-12 text-center">#</th>
+                  {rawColumns.map((col) => (
+                    <th
+                      key={col}
+                      onClick={() => handleSort(col)}
+                      className="p-2.5 cursor-pointer hover:bg-slate-200 transition-colors select-none"
+                    >
+                      <div className="flex items-center space-x-1">
+                        <span>{col}</span>
+                        {sortCol === col && (
+                          <span className="text-slate-900">{sortDir === 'asc' ? '↑' : '↓'}</span>
+                        )}
+                      </div>
+                    </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
-                {parsedData && parsedData.slice(0, 50).map((row, idx) => (
-                  <tr key={idx} className="hover:bg-slate-50 dark:hover:bg-slate-800/40">
-                    <td className="p-3 font-semibold text-slate-400">{idx + 1}</td>
-                    {columns.map((col, cIdx) => (
-                      <td key={cIdx} className="p-3">
-                        {String(row[col] !== undefined ? row[col] : '')}
-                      </td>
-                    ))}
-                  </tr>
-                ))}
+              <tbody className="divide-y divide-slate-200 bg-white">
+                {paginatedRows.map((row, idx) => {
+                  const globalIdx = (currentPage - 1) * rowsPerPage + idx + 1;
+                  return (
+                    <tr key={idx} className="hover:bg-slate-50">
+                      <td className="p-2.5 text-center font-medium text-slate-400">{globalIdx}</td>
+                      {rawColumns.map((col) => (
+                        <td key={col} className="p-2.5 text-slate-800">
+                          {String(row[col] !== undefined ? row[col] : '')}
+                        </td>
+                      ))}
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
+
+          {/* Table Pagination */}
+          {totalPages > 1 && (
+            <div className="flex items-center justify-between pt-2 text-xs">
+              <span className="text-slate-500">
+                Page {currentPage} of {totalPages}
+              </span>
+              <div className="flex items-center space-x-1">
+                <button
+                  disabled={currentPage === 1}
+                  onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
+                  className="p-1.5 border border-slate-300 rounded disabled:opacity-40 hover:bg-slate-100"
+                >
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button
+                  disabled={currentPage === totalPages}
+                  onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
+                  className="p-1.5 border border-slate-300 rounded disabled:opacity-40 hover:bg-slate-100"
+                >
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

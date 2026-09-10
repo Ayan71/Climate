@@ -2,21 +2,67 @@ const Dataset = require('../models/Dataset');
 const memoryStore = require('../config/store');
 const mongoose = require('mongoose');
 
+// Helper function to apply query filters for MongoDB and MemoryStore
+const filterDatasets = (list, { search, chartType, category, year, state, district, domain }) => {
+  let result = [...list];
+
+  if (domain) {
+    result = result.filter(d => d.domain === domain);
+  }
+  if (chartType) {
+    result = result.filter(d => d.chartType === chartType);
+  }
+  if (category) {
+    result = result.filter(d => d.category === category);
+  }
+  if (year) {
+    result = result.filter(d => String(d.year) === String(year));
+  }
+  if (state) {
+    result = result.filter(d => d.state === state);
+  }
+  if (district) {
+    result = result.filter(d => d.district === district);
+  }
+  if (search) {
+    const q = search.toLowerCase();
+    result = result.filter(d =>
+      (d.title && d.title.toLowerCase().includes(q)) ||
+      (d.description && d.description.toLowerCase().includes(q)) ||
+      (d.domain && d.domain.toLowerCase().includes(q)) ||
+      (d.category && d.category.toLowerCase().includes(q)) ||
+      (d.source && d.source.toLowerCase().includes(q)) ||
+      (d.tags && d.tags.some(t => t.toLowerCase().includes(q)))
+    );
+  }
+
+  result.sort((a, b) => (a.order || 0) - (b.order || 0));
+  return result;
+};
+
 // @desc    Get all published datasets for Landing Page (Order of Approval)
 // @route   GET /api/public
 // @access  Public
 exports.getPublicLandingData = async (req, res) => {
   try {
-    const { search, chartType } = req.query;
+    const { search, chartType, category, year, state, district, domain } = req.query;
 
     if (mongoose.connection.readyState === 1) {
       let query = { status: 'approved' };
+      if (domain) query.domain = domain;
       if (chartType) query.chartType = chartType;
+      if (category) query.category = category;
+      if (year) query.year = year;
+      if (state) query.state = state;
+      if (district) query.district = district;
       if (search) {
         query.$or = [
           { title: { $regex: search, $options: 'i' } },
           { description: { $regex: search, $options: 'i' } },
           { domain: { $regex: search, $options: 'i' } },
+          { category: { $regex: search, $options: 'i' } },
+          { tags: { $regex: search, $options: 'i' } },
+          { source: { $regex: search, $options: 'i' } },
         ];
       }
       const datasets = await Dataset.find(query)
@@ -30,27 +76,13 @@ exports.getPublicLandingData = async (req, res) => {
       });
     }
 
-    // Memory Store Fallback
-    let list = memoryStore.datasets.filter(d => d.status === 'approved');
-
-    if (chartType) {
-      list = list.filter(d => d.chartType === chartType);
-    }
-    if (search) {
-      const q = search.toLowerCase();
-      list = list.filter(d =>
-        (d.title && d.title.toLowerCase().includes(q)) ||
-        (d.description && d.description.toLowerCase().includes(q)) ||
-        (d.domain && d.domain.toLowerCase().includes(q))
-      );
-    }
-
-    list.sort((a, b) => (a.order || 0) - (b.order || 0));
+    const approvedList = memoryStore.datasets.filter(d => d.status === 'approved');
+    const filteredList = filterDatasets(approvedList, { search, chartType, category, year, state, district, domain });
 
     res.status(200).json({
       success: true,
-      count: list.length,
-      datasets: list,
+      count: filteredList.length,
+      datasets: filteredList,
     });
   } catch (error) {
     res.status(500).json({
@@ -65,8 +97,24 @@ exports.getPublicLandingData = async (req, res) => {
 // @access  Public
 exports.getPublicClimateData = async (req, res) => {
   try {
+    const { search, chartType, category, year, state, district } = req.query;
+
     if (mongoose.connection.readyState === 1) {
-      const datasets = await Dataset.find({ status: 'approved', domain: 'Climate' })
+      let query = { status: 'approved', domain: 'Climate' };
+      if (chartType) query.chartType = chartType;
+      if (category) query.category = category;
+      if (year) query.year = year;
+      if (state) query.state = state;
+      if (district) query.district = district;
+      if (search) {
+        query.$or = [
+          { title: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } },
+          { tags: { $regex: search, $options: 'i' } },
+        ];
+      }
+
+      const datasets = await Dataset.find(query)
         .populate('uploadedBy', 'name')
         .sort('order publishedAt');
 
@@ -78,15 +126,14 @@ exports.getPublicClimateData = async (req, res) => {
       });
     }
 
-    const list = memoryStore.datasets
-      .filter(d => d.status === 'approved' && d.domain === 'Climate')
-      .sort((a, b) => (a.order || 0) - (b.order || 0));
+    const approvedList = memoryStore.datasets.filter(d => d.status === 'approved' && d.domain === 'Climate');
+    const filteredList = filterDatasets(approvedList, { search, chartType, category, year, state, district });
 
     res.status(200).json({
       success: true,
       domain: 'Climate',
-      count: list.length,
-      datasets: list,
+      count: filteredList.length,
+      datasets: filteredList,
     });
   } catch (error) {
     res.status(500).json({
@@ -101,8 +148,24 @@ exports.getPublicClimateData = async (req, res) => {
 // @access  Public
 exports.getPublicEnergyData = async (req, res) => {
   try {
+    const { search, chartType, category, year, state, district } = req.query;
+
     if (mongoose.connection.readyState === 1) {
-      const datasets = await Dataset.find({ status: 'approved', domain: 'Energy' })
+      let query = { status: 'approved', domain: 'Energy' };
+      if (chartType) query.chartType = chartType;
+      if (category) query.category = category;
+      if (year) query.year = year;
+      if (state) query.state = state;
+      if (district) query.district = district;
+      if (search) {
+        query.$or = [
+          { title: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } },
+          { tags: { $regex: search, $options: 'i' } },
+        ];
+      }
+
+      const datasets = await Dataset.find(query)
         .populate('uploadedBy', 'name')
         .sort('order publishedAt');
 
@@ -114,15 +177,14 @@ exports.getPublicEnergyData = async (req, res) => {
       });
     }
 
-    const list = memoryStore.datasets
-      .filter(d => d.status === 'approved' && d.domain === 'Energy')
-      .sort((a, b) => (a.order || 0) - (b.order || 0));
+    const approvedList = memoryStore.datasets.filter(d => d.status === 'approved' && d.domain === 'Energy');
+    const filteredList = filterDatasets(approvedList, { search, chartType, category, year, state, district });
 
     res.status(200).json({
       success: true,
       domain: 'Energy',
-      count: list.length,
-      datasets: list,
+      count: filteredList.length,
+      datasets: filteredList,
     });
   } catch (error) {
     res.status(500).json({
@@ -137,8 +199,24 @@ exports.getPublicEnergyData = async (req, res) => {
 // @access  Public
 exports.getPublicPowerData = async (req, res) => {
   try {
+    const { search, chartType, category, year, state, district } = req.query;
+
     if (mongoose.connection.readyState === 1) {
-      const datasets = await Dataset.find({ status: 'approved', domain: 'Power' })
+      let query = { status: 'approved', domain: 'Power' };
+      if (chartType) query.chartType = chartType;
+      if (category) query.category = category;
+      if (year) query.year = year;
+      if (state) query.state = state;
+      if (district) query.district = district;
+      if (search) {
+        query.$or = [
+          { title: { $regex: search, $options: 'i' } },
+          { description: { $regex: search, $options: 'i' } },
+          { tags: { $regex: search, $options: 'i' } },
+        ];
+      }
+
+      const datasets = await Dataset.find(query)
         .populate('uploadedBy', 'name')
         .sort('order publishedAt');
 
@@ -150,15 +228,14 @@ exports.getPublicPowerData = async (req, res) => {
       });
     }
 
-    const list = memoryStore.datasets
-      .filter(d => d.status === 'approved' && d.domain === 'Power')
-      .sort((a, b) => (a.order || 0) - (b.order || 0));
+    const approvedList = memoryStore.datasets.filter(d => d.status === 'approved' && d.domain === 'Power');
+    const filteredList = filterDatasets(approvedList, { search, chartType, category, year, state, district });
 
     res.status(200).json({
       success: true,
       domain: 'Power',
-      count: list.length,
-      datasets: list,
+      count: filteredList.length,
+      datasets: filteredList,
     });
   } catch (error) {
     res.status(500).json({

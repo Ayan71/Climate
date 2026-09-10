@@ -15,7 +15,6 @@ function normalizeStateName(inputState) {
   if (!inputState) return null;
   const cleanInput = String(inputState).trim().toLowerCase();
   
-  // Quick direct or alias mappings
   const aliases = {
     'delhi': 'Delhi',
     'nct of delhi': 'Delhi',
@@ -40,12 +39,55 @@ function normalizeStateName(inputState) {
 }
 
 /**
+ * Automatically detects the best visualization chart type based on headers and sample values
+ */
+function autoDetectChartType(rows, columns) {
+  if (!columns || columns.length === 0) return 'timeseries_line';
+  const lowerCols = columns.map(c => c.toLowerCase());
+
+  // 1. Check for Latitude + Longitude coordinates
+  const hasLat = lowerCols.some(c => ['latitude', 'lat', 'lat_deg', 'y'].includes(c));
+  const hasLng = lowerCols.some(c => ['longitude', 'lng', 'lon', 'long', 'x'].includes(c));
+  if (hasLat && hasLng) return 'latlng';
+
+  // 2. Check for Indian state names
+  const hasStateCol = lowerCols.some(c => ['state', 'state_name', 'state/ut', 'region', 'province'].includes(c));
+  if (hasStateCol) return 'statewise';
+
+  // 3. Count numeric columns
+  let numericColCount = 0;
+  if (rows && rows.length > 0) {
+    const sampleRow = rows[0];
+    columns.forEach(col => {
+      const val = parseFloat(sampleRow[col]);
+      if (!isNaN(val)) numericColCount++;
+    });
+  }
+
+  // 4. Check for Pie / Doughnut (category + percentage/share or sum to ~100)
+  const isPieCandidate = lowerCols.some(c => ['percent', 'percentage', 'share', 'portion', 'distribution'].includes(c));
+  if (isPieCandidate) return 'pie';
+
+  // 5. Check for Multiple Numeric Columns (Multi-line)
+  const timeCol = lowerCols.find(c => ['date', 'year', 'time', 'timestamp', 'period', 'month'].includes(c));
+  if (timeCol && numericColCount >= 2) return 'multiline';
+
+  // 6. Time-series or Category Bar
+  if (timeCol) return 'timeseries_line';
+
+  // 7. Categories + Numbers -> Bar Chart
+  if (numericColCount === 1) return 'timeseries_bar';
+
+  return 'timeseries_line';
+}
+
+/**
  * Validates parsed CSV rows against selected chartType schema.
  * @param {Array<Object>} rows Array of raw row objects from CSV
- * @param {string} chartType Selected visualization type
- * @returns {Object} { isValid, errors, parsedData, columns }
+ * @param {string} chartType Selected visualization type or 'auto'
+ * @returns {Object} { isValid, errors, parsedData, columns, detectedChartType }
  */
-function validateCSV(rows, chartType) {
+function validateCSV(rows, chartType = 'auto') {
   const errors = [];
   if (!rows || !Array.isArray(rows) || rows.length === 0) {
     return {
@@ -53,29 +95,34 @@ function validateCSV(rows, chartType) {
       errors: ['CSV file is empty or could not be parsed.'],
       parsedData: [],
       columns: [],
+      detectedChartType: 'timeseries_line',
     };
   }
 
   // Extract columns from first row
   const rawHeaders = Object.keys(rows[0]);
   const columns = rawHeaders.map(h => h.trim());
-  const normalizedHeaders = columns.map(h => h.toLowerCase());
 
   if (rows.length > 5000) {
     errors.push('CSV exceeds maximum allowed limit of 5,000 rows.');
   }
 
+  // Auto detect chart type if requested or auto
+  let finalChartType = chartType;
+  if (!finalChartType || finalChartType === 'auto') {
+    finalChartType = autoDetectChartType(rows, columns);
+  }
+
   const parsedData = [];
 
-  // Helper column pickers
   const findColumn = (aliases) => {
     return columns.find(c => aliases.includes(c.toLowerCase()));
   };
 
-  if (chartType === 'latlng') {
+  if (finalChartType === 'latlng') {
     const latCol = findColumn(['latitude', 'lat', 'lat_deg', 'y']);
     const lngCol = findColumn(['longitude', 'lng', 'lon', 'long', 'x']);
-    const valCol = findColumn(['value', 'metric', 'intensity', 'power', 'capacity', 'temp', 'aqi', 'reading']);
+    const valCol = findColumn(['value', 'metric', 'intensity', 'power', 'capacity', 'temp', 'aqi', 'reading']) || columns.find(c => !['latitude', 'lat', 'lat_deg', 'y', 'longitude', 'lng', 'lon', 'long', 'x', 'name', 'title', 'location', 'station', 'site', 'city'].includes(c.toLowerCase()));
     const nameCol = findColumn(['name', 'title', 'location', 'station', 'site', 'city']);
 
     if (!latCol || !lngCol) {
@@ -83,21 +130,16 @@ function validateCSV(rows, chartType) {
         `Missing required coordinates columns for Latitude/Longitude chart. Expected headers: 'latitude' and 'longitude'. Found: [${columns.join(', ')}]`
       );
     }
-    if (!valCol) {
-      errors.push(
-        `Missing numeric metric column for Latitude/Longitude map. Expected a 'value' or metric column.`
-      );
-    }
 
     if (errors.length > 0) {
-      return { isValid: false, errors, parsedData: [], columns };
+      return { isValid: false, errors, parsedData: [], columns, detectedChartType: finalChartType };
     }
 
     rows.forEach((row, idx) => {
-      const lineNum = idx + 2; // header is line 1
+      const lineNum = idx + 2;
       const latVal = parseFloat(row[latCol]);
       const lngVal = parseFloat(row[lngCol]);
-      const metricVal = parseFloat(row[valCol]);
+      const metricVal = valCol ? parseFloat(row[valCol]) : 1;
       const locationName = nameCol && row[nameCol] ? String(row[nameCol]).trim() : `Point ${idx + 1}`;
 
       if (isNaN(latVal) || latVal < -90 || latVal > 90) {
@@ -106,122 +148,110 @@ function validateCSV(rows, chartType) {
       if (isNaN(lngVal) || lngVal < -180 || lngVal > 180) {
         errors.push(`Row ${lineNum}: Invalid longitude '${row[lngCol]}'. Must be a number between -180 and 180.`);
       }
-      if (isNaN(metricVal)) {
-        errors.push(`Row ${lineNum}: Invalid metric value '${row[valCol]}'. Must be a valid number.`);
-      }
 
-      if (errors.length <= 10) { // store up to 10 errors max before failing
+      if (errors.length <= 10) {
         parsedData.push({
           latitude: latVal,
           longitude: lngVal,
-          value: metricVal,
+          value: isNaN(metricVal) ? 0 : metricVal,
           name: locationName,
           ...row,
         });
       }
     });
 
-  } else if (chartType === 'statewise') {
-    const stateCol = findColumn(['state', 'state_name', 'state/ut', 'region', 'province']);
-    const valCol = findColumn(['value', 'capacity', 'generation', 'consumption', 'aqi', 'metric', 'total']);
+  } else if (finalChartType === 'statewise') {
+    const stateCol = findColumn(['state', 'state_name', 'state/ut', 'region', 'province']) || columns[0];
+    const valCol = findColumn(['value', 'capacity', 'generation', 'consumption', 'aqi', 'metric', 'total']) || columns.find(c => c !== stateCol);
 
     if (!stateCol) {
-      errors.push(
-        `Missing state column for State-wise heatmap. Expected header 'state' or 'state_name'. Found: [${columns.join(', ')}]`
-      );
-    }
-    if (!valCol) {
-      errors.push(
-        `Missing value column for State-wise heatmap. Expected header 'value' or metric.`
-      );
+      errors.push(`Missing state column for State-wise heatmap. Found: [${columns.join(', ')}]`);
     }
 
     if (errors.length > 0) {
-      return { isValid: false, errors, parsedData: [], columns };
+      return { isValid: false, errors, parsedData: [], columns, detectedChartType: finalChartType };
     }
 
     rows.forEach((row, idx) => {
       const lineNum = idx + 2;
       const rawState = row[stateCol];
       const normState = normalizeStateName(rawState);
-      const metricVal = parseFloat(row[valCol]);
+      const metricVal = valCol ? parseFloat(row[valCol]) : 0;
 
       if (!normState) {
-        errors.push(
-          `Row ${lineNum}: Unrecognized Indian state name '${rawState}'. Please use standard Indian State/UT names (e.g. Maharashtra, Tamil Nadu, Delhi).`
-        );
-      }
-      if (isNaN(metricVal)) {
-        errors.push(`Row ${lineNum}: Invalid value '${row[valCol]}' for state '${rawState}'. Must be a number.`);
+        errors.push(`Row ${lineNum}: Unrecognized Indian state name '${rawState}'.`);
       }
 
       if (errors.length <= 10) {
         parsedData.push({
           state: normState || rawState,
           originalState: rawState,
-          value: metricVal,
+          value: isNaN(metricVal) ? 0 : metricVal,
           ...row,
         });
       }
     });
 
-  } else if (chartType.startsWith('timeseries')) {
-    const timeCol = findColumn(['date', 'year', 'time', 'timestamp', 'period', 'month']);
-    const valCol = findColumn(['value', 'val', 'reading', 'metric', 'power', 'capacity', 'temp', 'generation', 'demand']);
-
-    // If valCol is not found, take the first non-time numeric column
-    let selectedValCol = valCol;
-    if (!selectedValCol) {
-      selectedValCol = columns.find(c => c !== timeCol);
-    }
-
-    if (!timeCol) {
-      errors.push(
-        `Missing time dimension column for Time-Series chart. Expected header 'date', 'year', or 'period'. Found: [${columns.join(', ')}]`
-      );
-    }
-    if (!selectedValCol) {
-      errors.push(
-        `Missing numeric metric column for Time-Series chart.`
-      );
-    }
-
-    if (errors.length > 0) {
-      return { isValid: false, errors, parsedData: [], columns };
-    }
+  } else if (['pie', 'doughnut'].includes(finalChartType)) {
+    const labelCol = findColumn(['category', 'name', 'label', 'type', 'source', 'fuel', 'sector']) || columns[0];
+    const valCol = findColumn(['value', 'percentage', 'percent', 'share', 'amount', 'val']) || columns.find(c => c !== labelCol);
 
     rows.forEach((row, idx) => {
       const lineNum = idx + 2;
-      const rawTime = row[timeCol];
-      const metricVal = parseFloat(row[selectedValCol]);
+      const label = row[labelCol] ? String(row[labelCol]).trim() : `Item ${idx + 1}`;
+      const metricVal = valCol ? parseFloat(row[valCol]) : parseFloat(row[columns[1]] || 0);
 
-      if (!rawTime || String(rawTime).trim() === '') {
-        errors.push(`Row ${lineNum}: Empty date or year value.`);
-      }
       if (isNaN(metricVal)) {
-        errors.push(`Row ${lineNum}: Invalid numeric value '${row[selectedValCol]}' for date '${rawTime}'.`);
+        errors.push(`Row ${lineNum}: Invalid numeric value '${row[valCol]}' for category '${label}'.`);
       }
 
       if (errors.length <= 10) {
         parsedData.push({
-          date: String(rawTime).trim(),
+          name: label,
           value: metricVal,
           ...row,
         });
       }
     });
 
+  } else if (finalChartType === 'multiline' || finalChartType.startsWith('timeseries')) {
+    const timeCol = findColumn(['date', 'year', 'time', 'timestamp', 'period', 'month']) || columns[0];
+
+    rows.forEach((row, idx) => {
+      const lineNum = idx + 2;
+      const rawTime = row[timeCol];
+
+      if (!rawTime || String(rawTime).trim() === '') {
+        errors.push(`Row ${lineNum}: Empty date or year value.`);
+      }
+
+      const item = { date: String(rawTime).trim() };
+      columns.forEach(col => {
+        const numVal = parseFloat(row[col]);
+        item[col] = isNaN(numVal) ? row[col] : numVal;
+      });
+      // Pick primary metric value if available
+      item.value = typeof item[columns[1]] === 'number' ? item[columns[1]] : parseFloat(row.value || 0);
+
+      if (errors.length <= 10) {
+        parsedData.push(item);
+      }
+    });
+
   } else {
-    errors.push(`Unsupported visualization chart type: ${chartType}`);
+    // Default fallback parsing
+    rows.forEach((row) => {
+      parsedData.push(row);
+    });
   }
 
-  // If there are errors, return failure with top error messages
   if (errors.length > 0) {
     return {
       isValid: false,
-      errors: errors.slice(0, 15), // cap at 15 readable error lines
+      errors: errors.slice(0, 15),
       parsedData: [],
       columns,
+      detectedChartType: finalChartType,
     };
   }
 
@@ -230,11 +260,13 @@ function validateCSV(rows, chartType) {
     errors: [],
     parsedData,
     columns,
+    detectedChartType: finalChartType,
   };
 }
 
 module.exports = {
   validateCSV,
+  autoDetectChartType,
   normalizeStateName,
   INDIAN_STATES,
 };

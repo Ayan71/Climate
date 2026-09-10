@@ -10,6 +10,7 @@ import {
   Activity,
   UserCheck,
   ShieldAlert,
+  Layers,
 } from 'lucide-react';
 
 const Sidebar = () => {
@@ -20,6 +21,7 @@ const Sidebar = () => {
   const superAdminLinks = [
     { name: 'Analytics Dashboard', path: '/superadmin/dashboard', icon: LayoutDashboard },
     { name: 'Dataset Approvals', path: '/superadmin/approvals', icon: CheckSquare },
+    { name: 'Category Management', path: '/superadmin/categories', icon: Layers },
     { name: 'Manage Admins', path: '/superadmin/admins', icon: Users },
     { name: 'All Datasets', path: '/superadmin/datasets', icon: FileSpreadsheet },
     { name: 'System Audit Logs', path: '/superadmin/logs', icon: Activity },
@@ -35,21 +37,21 @@ const Sidebar = () => {
   const links = isSuperAdmin ? superAdminLinks : adminLinks;
 
   return (
-    <aside className="w-64 min-h-[calc(100vh-4rem)] bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 p-4 space-y-6 flex-shrink-0">
+    <aside className="w-64 min-h-[calc(100vh-4rem)] bg-white border-r border-slate-200 p-4 space-y-6 flex-shrink-0 font-sans">
       {/* Role Badge */}
-      <div className="p-3 rounded-xl bg-slate-100 dark:bg-slate-800/80 border border-slate-200 dark:border-slate-700 flex items-center space-x-3">
-        <div className={`w-8 h-8 rounded-lg flex items-center justify-center text-white ${isSuperAdmin ? 'bg-amber-600' : 'bg-teal-600'}`}>
-          {isSuperAdmin ? <ShieldAlert className="w-5 h-5" /> : <UserCheck className="w-5 h-5" />}
+      <div className="p-3 rounded bg-slate-50 border border-slate-200 flex items-center space-x-3">
+        <div className={`w-8 h-8 rounded flex items-center justify-center text-white ${isSuperAdmin ? 'bg-slate-900' : 'bg-blue-800'}`}>
+          {isSuperAdmin ? <ShieldAlert className="w-4 h-4" /> : <UserCheck className="w-4 h-4" />}
         </div>
         <div>
-          <p className="font-bold text-xs text-slate-900 dark:text-white truncate">{user?.name || 'User Account'}</p>
+          <p className="font-bold text-xs text-slate-900 truncate">{user?.name || 'User Account'}</p>
           <p className="text-[10px] font-semibold uppercase text-slate-500">{isSuperAdmin ? 'Super Admin' : 'Admin Portal'}</p>
         </div>
       </div>
 
       {/* Navigation */}
       <div className="space-y-1">
-        <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 dark:text-slate-500 mb-2">Main Navigation</p>
+        <p className="px-3 text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">Main Navigation</p>
         {links.map((link) => {
           const Icon = link.icon;
           const isActive = location.pathname === link.path;
@@ -57,10 +59,10 @@ const Sidebar = () => {
             <Link
               key={link.path}
               to={link.path}
-              className={`flex items-center space-x-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+              className={`flex items-center space-x-3 px-3 py-2 rounded text-xs font-semibold transition-all ${
                 isActive
-                  ? 'bg-teal-600 text-white shadow-md shadow-teal-600/20'
-                  : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'
+                  ? 'bg-slate-900 text-white shadow-sm'
+                  : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
               }`}
             >
               <Icon className="w-4 h-4" />
