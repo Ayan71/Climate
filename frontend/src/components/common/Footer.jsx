@@ -37,14 +37,6 @@ const Footer = () => {
             </ul>
           </div>
 
-          <div>
-            <h4 className="text-white font-semibold mb-3">Administrative Access</h4>
-            <ul className="space-y-2">
-              <li><Link to="/login" className="hover:text-teal-400 transition-colors">Admin & Super Admin Login</Link></li>
-              <li className="text-slate-500">Super Admin: superadmin@vasudhaindia.org</li>
-              <li className="text-slate-500">Default Pass: Admin@123</li>
-            </ul>
-          </div>
         </div>
 
         <div className="border-t border-slate-800 pt-6 flex flex-col md:flex-row items-center justify-between text-slate-500 text-xs">

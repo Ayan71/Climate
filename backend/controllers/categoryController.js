@@ -39,8 +39,12 @@ exports.createCategory = async (req, res) => {
 
     const slug = name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, '');
 
+    const catObjectId = new mongoose.Types.ObjectId();
+    const catIdStr = catObjectId.toString();
+
     const newCat = {
-      _id: 'cat_' + Date.now(),
+      _id: catIdStr,
+      id: catIdStr,
       name,
       slug,
       domain: domain || 'General',
@@ -53,7 +57,10 @@ exports.createCategory = async (req, res) => {
     memoryStore.categories.push(newCat);
 
     if (mongoose.connection.readyState === 1) {
-      await Category.create(newCat);
+      await Category.create({
+        ...newCat,
+        _id: catObjectId,
+      });
     }
 
     res.status(201).json({

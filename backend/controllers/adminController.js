@@ -59,9 +59,12 @@ exports.createAdmin = async (req, res) => {
     const salt = await bcrypt.genSalt(10);
     const hashedPassword = await bcrypt.hash(password, salt);
 
+    const adminObjectId = new mongoose.Types.ObjectId();
+    const adminIdStr = adminObjectId.toString();
+
     const newAdmin = {
-      _id: 'admin_' + Date.now(),
-      id: 'admin_' + Date.now(),
+      _id: adminIdStr,
+      id: adminIdStr,
       name,
       email: cleanEmail,
       password: hashedPassword,
@@ -74,6 +77,7 @@ exports.createAdmin = async (req, res) => {
 
     if (mongoose.connection.readyState === 1) {
       await User.create({
+        _id: adminObjectId,
         name,
         email: cleanEmail,
         password,
@@ -139,7 +143,7 @@ exports.updateAdmin = async (req, res) => {
       admin.password = await bcrypt.hash(password, salt);
     }
 
-    if (mongoose.connection.readyState === 1) {
+    if (mongoose.connection.readyState === 1 && mongoose.Types.ObjectId.isValid(req.params.id)) {
       let dbAdmin = await User.findById(req.params.id);
       if (dbAdmin) {
         if (name) dbAdmin.name = name;
@@ -184,7 +188,7 @@ exports.toggleAdminStatus = async (req, res) => {
 
     admin.isActive = !admin.isActive;
 
-    if (mongoose.connection.readyState === 1) {
+    if (mongoose.connection.readyState === 1 && mongoose.Types.ObjectId.isValid(req.params.id)) {
       let dbAdmin = await User.findById(req.params.id);
       if (dbAdmin) {
         dbAdmin.isActive = admin.isActive;
@@ -222,7 +226,7 @@ exports.deleteAdmin = async (req, res) => {
     const admin = memoryStore.users[index];
     memoryStore.users.splice(index, 1);
 
-    if (mongoose.connection.readyState === 1) {
+    if (mongoose.connection.readyState === 1 && mongoose.Types.ObjectId.isValid(req.params.id)) {
       let dbAdmin = await User.findById(req.params.id);
       if (dbAdmin) {
         await dbAdmin.deleteOne();

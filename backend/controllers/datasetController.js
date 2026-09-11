@@ -86,9 +86,12 @@ exports.createDataset = async (req, res) => {
       ? tags.split(',').map(t => t.trim()).filter(Boolean)
       : [];
 
+    const datasetObjectId = new mongoose.Types.ObjectId();
+    const datasetIdStr = datasetObjectId.toString();
+
     const newDataset = {
-      _id: 'dataset_' + Date.now(),
-      id: 'dataset_' + Date.now(),
+      _id: datasetIdStr,
+      id: datasetIdStr,
       title,
       description: description || '',
       domain,
@@ -122,6 +125,7 @@ exports.createDataset = async (req, res) => {
     if (mongoose.connection.readyState === 1) {
       await Dataset.create({
         ...newDataset,
+        _id: datasetObjectId,
         uploadedBy: req.user.id,
       });
     }
