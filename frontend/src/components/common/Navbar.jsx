@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useSelector, useDispatch } from 'react-redux';
 import { setSearchQuery } from '../../redux/uiSlice';
 import { logout } from '../../redux/authSlice';
+import { toast } from 'react-toastify';
 import {
   Globe,
   Search,
@@ -39,7 +40,8 @@ const Navbar = () => {
 
   const handleLogout = () => {
     dispatch(logout());
-    navigate('/');
+    toast.info('Logged out successfully');
+    navigate('/login', { replace: true });
   };
 
   return (

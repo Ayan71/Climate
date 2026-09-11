@@ -149,7 +149,6 @@ Create or verify the `.env` file in the `backend/` root directory:
 ```env
 PORT=5000
 NODE_ENV=development
-MONGODB_URI=mongodb://127.0.0.1:27017/climate_db
 JWT_SECRET=super_secret_jwt_key_climate_2026_vasudha
 JWT_EXPIRE=30d
 

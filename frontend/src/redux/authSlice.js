@@ -1,10 +1,18 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import API from '../services/api';
 
+const getInitialUser = () => {
+  try {
+    const item = localStorage.getItem('user');
+    return item ? JSON.parse(item) : null;
+  } catch (err) {
+    localStorage.removeItem('user');
+    return null;
+  }
+};
+
 const initialToken = localStorage.getItem('token') || null;
-const initialUser = localStorage.getItem('user')
-  ? JSON.parse(localStorage.getItem('user'))
-  : null;
+const initialUser = getInitialUser();
 
 export const loginUser = createAsyncThunk(
   'auth/login',
@@ -40,7 +48,7 @@ const authSlice = createSlice({
   initialState: {
     token: initialToken,
     user: initialUser,
-    isAuthenticated: !!initialToken,
+    isAuthenticated: !!(initialToken && initialUser),
     loading: false,
     error: null,
   },
@@ -77,6 +85,13 @@ const authSlice = createSlice({
       // Fetch Profile
       .addCase(fetchProfile.fulfilled, (state, action) => {
         state.user = action.payload;
+      })
+      .addCase(fetchProfile.rejected, (state) => {
+        state.token = null;
+        state.user = null;
+        state.isAuthenticated = false;
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
       });
   },
 });

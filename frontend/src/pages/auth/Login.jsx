@@ -1,30 +1,54 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { useDispatch, useSelector } from 'react-redux';
 import { loginUser, clearError } from '../../redux/authSlice';
 import { toast } from 'react-toastify';
-import { Lock, Mail, ShieldCheck, UserCheck, ArrowRight, Globe } from 'lucide-react';
+import { Lock, Mail, ShieldCheck, UserCheck, ArrowRight, Globe, AlertTriangle } from 'lucide-react';
 
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const dispatch = useDispatch();
-  const { loading, error } = useSelector((state) => state.auth);
+  const { loading, error, isAuthenticated, user } = useSelector((state) => state.auth);
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [expiredNotice, setExpiredNotice] = useState(false);
+
+  // If user is already authenticated, redirect to their dashboard
+  useEffect(() => {
+    if (isAuthenticated && user) {
+      if (user.role === 'superadmin') {
+        navigate('/superadmin/dashboard', { replace: true });
+      } else {
+        navigate('/admin/dashboard', { replace: true });
+      }
+    }
+  }, [isAuthenticated, user, navigate]);
+
+  // Handle ?expired=true query parameter
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    if (searchParams.get('expired') === 'true') {
+      setExpiredNotice(true);
+      // Clean up URL parameter without full page reload
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, [location.search]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     dispatch(clearError());
+    setExpiredNotice(false);
 
     const result = await dispatch(loginUser({ email, password }));
     if (loginUser.fulfilled.match(result)) {
-      const user = result.payload.user;
-      toast.success(`Welcome back, ${user.name}!`);
-      if (user.role === 'superadmin') {
-        navigate('/superadmin/dashboard');
+      const loggedUser = result.payload.user;
+      toast.success(`Welcome back, ${loggedUser.name}!`);
+      if (loggedUser.role === 'superadmin') {
+        navigate('/superadmin/dashboard', { replace: true });
       } else {
-        navigate('/admin/dashboard');
+        navigate('/admin/dashboard', { replace: true });
       }
     } else {
       toast.error(result.payload || 'Login failed');
@@ -52,6 +76,14 @@ const Login = () => {
           <h2 className="text-xl font-bold text-slate-900">Admin Portal Login</h2>
           <p className="text-xs text-slate-500">Authorized administrative login for dataset management</p>
         </div>
+
+        {/* Expired Session Notice */}
+        {expiredNotice && (
+          <div className="p-3 rounded bg-amber-50 border border-amber-300 text-amber-900 text-xs font-semibold flex items-center space-x-2">
+            <AlertTriangle className="w-4 h-4 flex-shrink-0 text-amber-600" />
+            <span>Your session has expired or is invalid. Please sign in again.</span>
+          </div>
+        )}
 
         {/* Demo Quick Fill Buttons */}
         <div className="p-3 rounded bg-slate-50 border border-slate-200 space-y-2">

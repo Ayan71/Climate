@@ -2,7 +2,7 @@ const mongoose = require('mongoose');
 
 const connectDB = async () => {
   try {
-    const connStr = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/climate_db';
+    const connStr = process.env.MONGODB_URI;
     const conn = await mongoose.connect(connStr, {
       serverSelectionTimeoutMS: 4000,
     });

@@ -1,5 +1,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
+const mongoose = require('mongoose');
+const memoryStore = require('../config/store');
 
 exports.protect = async (req, res, next) => {
   let token;
@@ -24,7 +26,24 @@ exports.protect = async (req, res, next) => {
       process.env.JWT_SECRET || 'super_secret_jwt_key_climate_2026_vasudha'
     );
 
-    const user = await User.findById(decoded.id);
+    let user = null;
+
+    if (mongoose.connection.readyState === 1 && decoded.id && mongoose.Types.ObjectId.isValid(decoded.id)) {
+      try {
+        user = await User.findById(decoded.id);
+      } catch (err) {
+        user = null;
+      }
+    }
+
+    if (!user && decoded) {
+      user = memoryStore.users.find(
+        (u) =>
+          String(u._id) === String(decoded.id) ||
+          String(u.id) === String(decoded.id) ||
+          (decoded.email && u.email.toLowerCase() === decoded.email.toLowerCase())
+      );
+    }
 
     if (!user) {
       return res.status(401).json({
